@@ -1,5 +1,5 @@
 # tpch-pgsql
-Implements the (TPCH benchmark)[http://www.tpc.org/tpch/] for Postgres
+Implements the [TPCH benchmark](http://www.tpc.org/tpch/) for Postgres
 
 ### Requirements
 * The benchmark requires TPC-H dbgen:
