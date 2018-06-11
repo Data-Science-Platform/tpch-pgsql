@@ -50,3 +50,10 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+#Ignore data files
+*.tbl
+*.tbl.csv
+*.csv
+
+perf_query_gen/
