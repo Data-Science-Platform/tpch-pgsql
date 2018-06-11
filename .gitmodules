@@ -1,3 +1,0 @@
-[submodule "tpch-dbgen"]
-	path = tpch-dbgen
-	url = https://github.com/electrum/tpch-dbgen
