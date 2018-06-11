@@ -3,11 +3,17 @@ Implements the [TPCH benchmark](http://www.tpc.org/tpch/) for Postgres
 
 ### Requirements
 * The benchmark requires TPC-H dbgen:
-`git clone https://github.com/electrum/tpch-dbgen`
+
+```
+wget https://github.com/electrum/tpch-dbgen/archive/32f1c1b92d1664dba542e927d23d86ffa57aa253.zip
+unzip 32f1c1b92d1664dba542e927d23d86ffa57aa253.zip
+mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen
+rm 32f1c1b92d1664dba542e927d23d86ffa57aa253.zip
+```
 
 * gcc
 * python3
-* some running instance of PostGres
+* some running instance of Postgres
 
 
 ### Usage
@@ -71,4 +77,5 @@ The complete process for executing TPCH tests is illustrated in the following fi
 
 ### References
 
-For notes on how to the TPCH-Benchmark works see the paper "iceis2012"
+* For notes on how to the TPCH-Benchmark works see the paper [iceis2012](https://github.com/Data-Science-Platform/tpch-pgsql/blob/master/iceis2012.pdf).
+* For the TPC-H benchmark specification see [this document](http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v2.17.3.pdf).
