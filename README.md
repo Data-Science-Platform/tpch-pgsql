@@ -30,7 +30,7 @@ optional arguments:
   -p PORT, --port PORT  Port on which PG instance runs
   -u USER, --user USER  User for the PG instance
   -v [PASSWORD], --password [PASSWORD]
-                        Enter the password for the PG instance
+                        Password for the PG instance
   -d DATABASE, --database DATABASE
                         Name of the database
   -i DATA_DIR, --data-dir DATA_DIR
@@ -46,9 +46,28 @@ optional arguments:
 ```
 
 ### Phases
-* The prepare phase builds TPC-H dbgen, creates load and update files and creates the schema in the database specified. 
-* The load phase loads the tables into the database and creates indexes for querying.
-* The query phase executes queries and measures their times (not implemented right now)
+* The prepare phase builds TPC-H dbgen and querygen and creates the load and update files. 
+* The load phase cleans the database (if required), loads the tables into the database and 
+creates indexes for querying. The results for this phase consist of the following metrics:
+    * Schema creation time
+    * Data loading time
+    * Foreign key constraint and index creation time
+* The query phase is the actual performance test. It consists of two parts:
+    * Power test: This consists of sequential execution of the refresh functions and the query streams. It reports back with the execution times for:
+        * refresh function 1
+        * query execution time for the 22 TPCH queries
+        * refresh function 2
+    * Throughput test: This consists of parallel execution of the query streams and the pairs of refresh functions (*not implemented yet*)
+
+### TPCH Process
+The complete process for executing TPCH tests is illustrated in the following figure:
+![tpch-process](images/tpch_process.png "TPCH Benchmark Process")
+
+### Database Schema
+![db-schema](images/TPC-H_Datamodel.png "TPCH Database Schema")
+
+### Known Issues
+* Sometimes the data generation phase fails due to file permission issues. In such a scenario delete the data directory and all generated `.tbl` files inside your `tpch-dbgen` directory.
 
 ### References
 
