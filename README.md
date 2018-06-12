@@ -6,7 +6,7 @@ Implements the [TPCH benchmark](http://www.tpc.org/tpch/) for Postgres
 
 ```
 wget -q https://github.com/electrum/tpch-dbgen/archive/32f1c1b92d1664dba542e927d23d86ffa57aa253.zip -O tpch-dbgen.zip
-unzip tpch-dbgen.zip -d tpch-dbgen/ && rm tpch-dbgen.zip
+unzip -q tpch-dbgen.zip && mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen && rm tpch-dbgen.zip
 ```
 
 * gcc
