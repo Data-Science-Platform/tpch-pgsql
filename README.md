@@ -5,15 +5,27 @@ Implements the [TPCH benchmark](http://www.tpc.org/tpch/) for Postgres
 * The benchmark requires TPC-H dbgen:
 
 ```
-wget https://github.com/electrum/tpch-dbgen/archive/32f1c1b92d1664dba542e927d23d86ffa57aa253.zip
-unzip 32f1c1b92d1664dba542e927d23d86ffa57aa253.zip
-mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen
-rm 32f1c1b92d1664dba542e927d23d86ffa57aa253.zip
+wget -q https://github.com/electrum/tpch-dbgen/archive/32f1c1b92d1664dba542e927d23d86ffa57aa253.zip -O tpch-dbgen.zip
+unzip -q tpch-dbgen.zip && mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen && rm tpch-dbgen.zip
 ```
 
 * gcc
+```
+gcc --version
+```
 * python3
+```
+python3 --version
+```
+* python requirements
+```
+pip install -r requirements.txt
+```
 * some running instance of Postgres
+```
+pg_config --version
+```
+
 
 
 ### Usage
