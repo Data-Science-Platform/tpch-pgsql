@@ -9,6 +9,9 @@ services:
 addons:
   postgresql: "9.6"
 
+env:
+  - TPCH_PASSWORD=dbf8pXCrzZ5cDeqv
+
 before_install:
   - python --version
   - pip --version
