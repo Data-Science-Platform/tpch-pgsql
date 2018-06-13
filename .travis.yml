@@ -26,7 +26,7 @@ install:
 before_script:
   - psql --command="CREATE DATABASE tpchdb;" -U postgres
   - psql --command="CREATE USER tpch WITH PASSWORD 'passw0rt';" -U postgres
-  - psql --command="GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;" --echo-all
+  - psql --command="GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;" -U postgres
 
 script:
   - ./benchmark.py --help
