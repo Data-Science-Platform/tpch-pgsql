@@ -33,4 +33,5 @@ script:
   - ./benchmark.py --help
   - ./benchmark.py prepare
   - ./benchmark.py --database tpchdb --user tpch --password $TPCH_PASSWORD load
+  - ./benchmark.py --database tpchdb --user tpch --password $TPCH_PASSWORD query
 
