@@ -9,6 +9,9 @@ services:
 addons:
   postgresql: "9.6"
 
+env:
+  - TPCH_PASSWORD=dbf8pXCrzZ5cDeqv
+
 before_install:
   - python --version
   - pip --version
@@ -22,7 +25,6 @@ before_install:
 
 install:
   - pip install -r requirements.txt
-  - pip install psycopg2-binary
 
 before_script:
   - psql --command="CREATE DATABASE tpchdb;" -U postgres
@@ -31,7 +33,7 @@ before_script:
 
 script:
   - ./benchmark.py --help
-  - ./benchmark.py prepare
+  - ./benchmark.py --scale 0.01 prepare
   - ./benchmark.py --database tpchdb --user tpch --password $TPCH_PASSWORD load
   - ./benchmark.py --database tpchdb --user tpch --password $TPCH_PASSWORD query
 
