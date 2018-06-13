@@ -3,6 +3,9 @@ language: python
 python:
   - "3.4"
 
+env:
+  - PSQL_PASSWORD: "passw0rt"
+
 before_install:
   - python --version
   - pip --version
@@ -14,9 +17,16 @@ before_install:
   - mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen
   - rm tpch-dbgen.zip
 
+  - sudo -u postgres createuser tpch
+  - sudo -u postgres createdb tpchdb
+  - sudo -u postgres psql --command="ALTER USER tpch WITH ENCRYPTED PASSWORD '${PSQL_PASSWORD}';" --echo-all
+  - sudo -u postgres psql --command="GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;" --echo-all
+
 install:
   - pip install -r requirements.txt
 
 script:
   - ./benchmark.py --help
   - ./benchmark.py prepare
+  - ./benchmark.py --database tpchdb --user tpch --password $PSQL_PASSWORD load
+
