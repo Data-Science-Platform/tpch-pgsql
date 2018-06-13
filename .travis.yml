@@ -9,9 +9,6 @@ services:
 addons:
   postgresql: "9.6"
 
-env:
-  - PSQL_PASSWORD: "passw0rt"
-
 before_install:
   - python --version
   - pip --version
@@ -29,11 +26,11 @@ install:
 
 before_script:
   - psql --command="CREATE DATABASE tpchdb;" -U postgres
-  - psql --command="CREATE USER tpch WITH PASSWORD 'passw0rt';" -U postgres
+  - psql --command="CREATE USER tpch WITH PASSWORD '${TPCH_PASSWORD}';" -U postgres
   - psql --command="GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;" -U postgres
 
 script:
   - ./benchmark.py --help
   - ./benchmark.py prepare
-  - ./benchmark.py --database tpchdb --user tpch --password $PSQL_PASSWORD load
+  - ./benchmark.py --database tpchdb --user tpch --password $TPCH_PASSWORD load
 
