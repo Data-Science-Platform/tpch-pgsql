@@ -17,6 +17,11 @@ gcc --version
 ```
 python3 --version
 ```
+* make python3 your default python version (needed by the next pip command)
+```
+virtualenv -p python3 python3.venv
+source python3.venv/bin/activate
+```
 * python requirements
 ```
 pip install -r requirements.txt
@@ -25,8 +30,20 @@ pip install -r requirements.txt
 ```
 pg_config --version
 ```
+* if you want to run the database locally, please find below the commands for Ubuntu 14.04
+```
+sudo apt-get install -y postgresql postgresql-contrib
 
+sudo -u postgres createuser tpch
+sudo -u postgres createdb tpchdb
 
+sudo -u postgres psql <<PSQL
+ALTER USER tpch WITH ENCRYPTED PASSWORD '********';
+GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;
+\l
+\q
+PSQL
+```
 
 ### Usage
 There is a single python file that implements all phases of the benchmark.
@@ -64,13 +81,18 @@ optional arguments:
 ```
 
 ### Phases
-* The prepare phase builds TPC-H dbgen and querygen and creates the load and update files. 
-* The load phase cleans the database (if required), loads the tables into the database and 
+* prepare 
+** The prepare phase builds TPC-H dbgen and querygen and creates the load and update files. 
+
+* load 
+** The load phase cleans the database (if required), loads the tables into the database and 
 creates indexes for querying. The results for this phase consist of the following metrics:
     * Schema creation time
     * Data loading time
     * Foreign key constraint and index creation time
-* The query phase is the actual performance test. It consists of two parts:
+
+* query
+** The query phase is the actual performance test. It consists of two parts:
     * Power test: This consists of sequential execution of the refresh functions and the query streams. It reports back with the execution times for:
         * refresh function 1
         * query execution time for the 22 TPCH queries
