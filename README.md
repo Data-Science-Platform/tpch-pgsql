@@ -5,12 +5,10 @@ Implements the [TPCH benchmark](http://www.tpc.org/tpch/) for Postgres
 
 ### Requirements
 * The benchmark requires TPC-H dbgen:
-
 ```
 wget -q https://github.com/electrum/tpch-dbgen/archive/32f1c1b92d1664dba542e927d23d86ffa57aa253.zip -O tpch-dbgen.zip
 unzip -q tpch-dbgen.zip && mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen && rm tpch-dbgen.zip
 ```
-
 * gcc
 ```
 gcc --version
@@ -19,14 +17,9 @@ gcc --version
 ```
 python3 --version
 ```
-* make python3 your default python version (needed by the next pip command)
-```
-virtualenv -p python3 python3.venv
-source python3.venv/bin/activate
-```
 * python requirements
 ```
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 * some running instance of Postgres
 ```
@@ -83,18 +76,18 @@ optional arguments:
 ```
 
 ### Phases
-* `prepare`
-  * The prepare phase builds TPC-H dbgen and querygen and creates the load and update files. 
+* `prepare`  
+The prepare phase builds TPC-H dbgen and querygen and creates the load and update files. 
 
-* `load`
-  * The load phase cleans the database (if required), loads the tables into the database and 
+* `load`  
+The load phase cleans the database (if required), loads the tables into the database and 
 creates indexes for querying. The results for this phase consist of the following metrics:
     * Schema creation time
     * Data loading time
     * Foreign key constraint and index creation time
 
-* `query`
-  * The query phase is the actual performance test. It consists of two parts:
+* `query`  
+The query phase is the actual performance test. It consists of two parts:
     * Power test: This consists of sequential execution of the refresh functions and the query streams. It reports back with the execution times for:
         * refresh function 1
         * query execution time for the 22 TPCH queries
