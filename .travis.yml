@@ -9,9 +9,14 @@ before_install:
   - pg_config --version
   - psql --version
 
+  - wget -q https://github.com/electrum/tpch-dbgen/archive/32f1c1b92d1664dba542e927d23d86ffa57aa253.zip -O tpch-dbgen.zip
+  - unzip -q tpch-dbgen.zip
+  - mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen
+  - rm tpch-dbgen.zip
+
 install:
   - pip install -r requirements.txt
 
 script:
   - ./benchmark.py --help
-
+  - ./benchmark.py prepare
