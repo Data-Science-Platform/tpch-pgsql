@@ -1,14 +1,14 @@
 # tpch-pgsql
+[![Build status](https://travis-ci.org/Data-Science-Platform/tpch-pgsql.svg?branch=master)](https://travis-ci.org/Data-Science-Platform/tpch-pgsql)
+
 Implements the [TPCH benchmark](http://www.tpc.org/tpch/) for Postgres
 
 ### Requirements
 * The benchmark requires TPC-H dbgen:
-
 ```
 wget -q https://github.com/electrum/tpch-dbgen/archive/32f1c1b92d1664dba542e927d23d86ffa57aa253.zip -O tpch-dbgen.zip
 unzip -q tpch-dbgen.zip && mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen && rm tpch-dbgen.zip
 ```
-
 * gcc
 ```
 gcc --version
@@ -19,14 +19,26 @@ python3 --version
 ```
 * python requirements
 ```
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 * some running instance of Postgres
 ```
 pg_config --version
 ```
+* if you want to run the database locally, please find below the commands for Ubuntu 14.04
+```
+sudo apt-get install -y postgresql postgresql-contrib
 
+sudo -u postgres createuser tpch
+sudo -u postgres createdb tpchdb
 
+sudo -u postgres psql <<PSQL
+ALTER USER tpch WITH ENCRYPTED PASSWORD '********';
+GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;
+\l
+\q
+PSQL
+```
 
 ### Usage
 There is a single python file that implements all phases of the benchmark.
@@ -64,13 +76,18 @@ optional arguments:
 ```
 
 ### Phases
-* The prepare phase builds TPC-H dbgen and querygen and creates the load and update files. 
-* The load phase cleans the database (if required), loads the tables into the database and 
+* `prepare`  
+The prepare phase builds TPC-H dbgen and querygen and creates the load and update files. 
+
+* `load`  
+The load phase cleans the database (if required), loads the tables into the database and 
 creates indexes for querying. The results for this phase consist of the following metrics:
     * Schema creation time
     * Data loading time
     * Foreign key constraint and index creation time
-* The query phase is the actual performance test. It consists of two parts:
+
+* `query`  
+The query phase is the actual performance test. It consists of two parts:
     * Power test: This consists of sequential execution of the refresh functions and the query streams. It reports back with the execution times for:
         * refresh function 1
         * query execution time for the 22 TPCH queries

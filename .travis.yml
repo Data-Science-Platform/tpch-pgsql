@@ -1,0 +1,39 @@
+language: python
+
+python:
+  - "3.4"
+
+services:
+  - postgresql
+
+addons:
+  postgresql: "9.6"
+
+env:
+  - TPCH_PASSWORD=dbf8pXCrzZ5cDeqv
+
+before_install:
+  - python --version
+  - pip --version
+  - pg_config --version
+  - psql --version
+
+  - wget -q https://github.com/electrum/tpch-dbgen/archive/32f1c1b92d1664dba542e927d23d86ffa57aa253.zip -O tpch-dbgen.zip
+  - unzip -q tpch-dbgen.zip
+  - mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen
+  - rm tpch-dbgen.zip
+
+install:
+  - pip install -r requirements.txt
+
+before_script:
+  - psql --command="CREATE DATABASE tpchdb;" -U postgres
+  - psql --command="CREATE USER tpch WITH PASSWORD '${TPCH_PASSWORD}';" -U postgres
+  - psql --command="GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;" -U postgres
+
+script:
+  - ./benchmark.py --help
+  - ./benchmark.py --scale 0.01 prepare
+  - ./benchmark.py --database tpchdb --user tpch --password $TPCH_PASSWORD load
+  - ./benchmark.py --database tpchdb --user tpch --password $TPCH_PASSWORD query
+
