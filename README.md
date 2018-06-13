@@ -81,18 +81,18 @@ optional arguments:
 ```
 
 ### Phases
-* prepare 
-** The prepare phase builds TPC-H dbgen and querygen and creates the load and update files. 
+* `prepare`
+  * The prepare phase builds TPC-H dbgen and querygen and creates the load and update files. 
 
-* load 
-** The load phase cleans the database (if required), loads the tables into the database and 
+* `load`
+  * The load phase cleans the database (if required), loads the tables into the database and 
 creates indexes for querying. The results for this phase consist of the following metrics:
     * Schema creation time
     * Data loading time
     * Foreign key constraint and index creation time
 
-* query
-** The query phase is the actual performance test. It consists of two parts:
+* `query`
+  * The query phase is the actual performance test. It consists of two parts:
     * Power test: This consists of sequential execution of the refresh functions and the query streams. It reports back with the execution times for:
         * refresh function 1
         * query execution time for the 22 TPCH queries
