@@ -4,6 +4,7 @@ import json
 import psycopg2
 import argparse
 import os
+import time
 import subprocess
 import re
 import shutil
@@ -559,6 +560,23 @@ def run_throughput_test(query_root, data_dir, result, host, port, db_name, user,
         return 1
 
 
+def niceprint(txt, width):
+    w = round((width - len(txt) - 2) / 2)
+    x = len(txt)%2 # extra space if needed
+    print("*"*w + " " + txt + " " + " "*x + "*"*w)
+    
+
+def reboot():
+    width = 60
+    print("*"*width)
+    niceprint("Restarting PostgreSQL ...", width)
+    command = ['sudo', 'service', 'postgresql', 'restart'];
+    subprocess.call(command, shell=False) # shell=FALSE for sudo to work.
+    print("*"*width)
+    niceprint("Clearing OS caches ...", width)
+    # https://linux-mm.org/Drop_Caches
+    os.system('sudo sh -c "sync; echo 3 > /proc/sys/vm/drop_caches"')
+    print("*"*width)
 
 
 def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
