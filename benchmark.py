@@ -427,9 +427,10 @@ def insert_lineitem(cols, conn):
 
 
 def refresh_func1(conn, data_dir, stream_num):
+    stream_nr = stream_num + 1 # generated files are named 1,2,3,... while streams are indexed 0,1,2,...
     try:
-        filepath_o = os.path.join(data_dir, UPDATE_DIR, "orders.tbl.u" + str(stream_num+1) + ".csv")
-        filepath_l = os.path.join(data_dir, UPDATE_DIR, "lineitem.tbl.u" + str(stream_num+1) + ".csv")
+        filepath_o = os.path.join(data_dir, UPDATE_DIR, "orders.tbl.u" + str(stream_nr) + ".csv")
+        filepath_l = os.path.join(data_dir, UPDATE_DIR, "lineitem.tbl.u" + str(stream_nr) + ".csv")
         with open(filepath_o) as orders_file, open(filepath_l) as lineitem_file:
             todo_licols = None
             for orders_lines in grouper(orders_file, 100, ''):
@@ -533,20 +534,23 @@ def run_throughput_test(query_root, data_dir, result, host, port, db_name, user,
         result = Result("ThroughputRStream")
         processes = []
         for i in range(num_streams):
+            # queries
+            stream_num = i + 1
+            print("Running stream #%s" % str(stream_num))
             p = Process(target=run_throughput_inner,
                         args=(query_root, data_dir, host, port, db_name, user, password,
-                                i+1, q))
+                              stream_num, q))
             processes.append(p)
             p.start()
-        for i in range(num_streams):
+            # refresh functions
             result.startTimer()
-            if refresh_func1(conn, data_dir, i+1):
+            if refresh_func1(conn, data_dir, stream_num):
                 return 1
-            result.setMetric("refresh_func1_stream_%s" % str(i+1), result.stopTimer())
+            result.setMetric("refresh_func1_stream_%s" % str(stream_num), result.stopTimer())
             result.startTimer()
-            if refresh_func2(conn, data_dir, i+1):
+            if refresh_func2(conn, data_dir, stream_num):
                 return 1
-            result.setMetric("refresh_func2_stream_%s" % str(i+1), result.stopTimer())
+            result.setMetric("refresh_func2_stream_%s" % str(stream_num), result.stopTimer())
         q.put(result)
         for p in processes:
             p.join()
@@ -608,6 +612,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         print("Power test finished.")
         result.printMetrics()
         result.saveMetrics("power")
+        # Throughput test
         q = Queue()
         if run_throughput_test(query_root, data_dir, result, host, port, database, user, password,
                                  num_streams, q):
