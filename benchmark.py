@@ -427,11 +427,13 @@ def insert_lineitem(cols, conn):
     conn.executeQuery(li_insert_stmt)
 
 
-def refresh_func1(conn, data_dir, stream_num):
-    stream_nr = stream_num + 1 # generated files are named 1,2,3,... while streams are indexed 0,1,2,...
+def refresh_func1(conn, data_dir, run, stream_num, verbose):
     try:
-        filepath_o = os.path.join(data_dir, UPDATE_DIR, "orders.tbl.u" + str(stream_nr) + ".csv")
-        filepath_l = os.path.join(data_dir, UPDATE_DIR, "lineitem.tbl.u" + str(stream_nr) + ".csv")
+        if verbose:
+            print("Running refresh function #1 in run #%s stream #%s" % (run, stream_num))
+        file_nr = stream_num + 1 # generated files are named 1,2,3,... while streams are indexed 0,1,2,...
+        filepath_o = os.path.join(data_dir, UPDATE_DIR, "orders.tbl.u" + str(file_nr) + ".csv")
+        filepath_l = os.path.join(data_dir, UPDATE_DIR, "lineitem.tbl.u" + str(file_nr) + ".csv")
         with open(filepath_o) as orders_file, open(filepath_l) as lineitem_file:
             todo_licols = None
             for orders_lines in grouper(orders_file, 100, ''):
@@ -468,8 +470,10 @@ def refresh_func1(conn, data_dir, stream_num):
         return 1
 
 
-def refresh_func2(conn, data_dir, stream_num):
+def refresh_func2(conn, data_dir, run, stream_num, verbose):
     try:
+        if verbose:
+            print("Running refresh function #2 in run #%s stream #%s" % (run, stream_num))
         filepath = os.path.join(data_dir, DELETE_DIR, "delete." + str(stream_num+1) + ".csv")
         with open(filepath, 'r') as in_file:
             for ids in grouper(in_file, 100, ''):
@@ -482,81 +486,108 @@ def refresh_func2(conn, data_dir, stream_num):
         return 1
 
 
-def run_query_stream(conn, query_root, stream_num, result):
+def run_query_stream(conn, query_root, run, stream_num, result, verbose):
     order = QUERY_ORDER[stream_num % len(QUERY_ORDER)]
     for i in range(0, 22):
         try:
+            if verbose:
+                print("Running query #%s in run #%s stream #%s ..." % (order[i], run, stream_num))
             filepath = os.path.join(query_root, GENERATED_QUERY_DIR, str(order[i]) + ".sql")
             result.startTimer()
             conn.executeQueryFromFile(filepath)
-            result.setMetric("query_%s_stream_%s" % (order[i], stream_num), result.stopTimer())
+            result.setMetric("run_%s_stream_%s_query_%s" % (run, stream_num, order[i]), result.stopTimer())
         except Exception as e:
-            print("unable to execute query %s. %s" % (order[i], e))
+            print("unable to execute query %s in run %s stream %s: %s" % (order[i], run, stream_num, e))
             return 1
     return 0
 
 
-def run_power_test(query_root, data_dir, result, host, port, db_name, user, password):
+def run_power_test(query_root, data_dir, host, port, db_name, user, password,
+                   run, verbose, read_only):
     try:
+        print("Power test run #%s started ..." % run)
         conn = PGDB(host, port, db_name, user, password)
+        result = Result("Power")
         result.startTimer()
-        if refresh_func1(conn, data_dir, 0):
+        #
+        if not read_only:
+            if refresh_func1(conn, data_dir, run, 0, verbose):
+                return 1
+        result.setMetric("refresh_run_%s_stream_%s_func1" % (run, str(0)), result.stopTimer())
+        #
+        if run_query_stream(conn, query_root, run, 0, result, verbose):
             return 1
-        result.setMetric("refresh_func1_stream_%s" % str(0), result.stopTimer())
-        if run_query_stream(conn, query_root, 0, result):
-            return 1
+        #
         result.startTimer()
-        if refresh_func2(conn, data_dir, 0):
-            return 1
-        result.setMetric("refresh_func2_stream_%s" % str(0), result.stopTimer())
+        if not read_only:
+            if refresh_func2(conn, data_dir, run, 0, verbose):
+                return 1
+        result.setMetric("refresh_run_%s_stream_%s_func2" % (run, str(0)), result.stopTimer())
+        #
+        print("Power test run #%s finished." % run)
+        if verbose:
+            result.printMetrics()
+        result.saveMetrics("power%s" % run)
     except Exception as e:
-        print("unable to run power test. DB connection failed. %s" % e)
+        print("unable to run power test. DB connection failed: %s" % e)
         return 1
 
 
-def run_throughput_inner(query_root, data_dir, host, port, db_name, user,
-                            password, stream_num, q):
+def run_throughput_inner(query_root, data_dir, host, port, db_name, user, password, 
+                         run, stream_num, q, verbose):
     try:
         conn = PGDB(host, port, db_name, user, password)
-        result = Result("ThroughputQStream_%s" % stream_num)
-        if run_query_stream(conn, query_root, stream_num, result):
-            print("unable to finish query stream %s" % stream_num)
+        result = Result("ThroughputQueryStream%s" % stream_num)
+        if run_query_stream(conn, query_root, run, stream_num, result, verbose):
+            print("unable to finish query run #%s stream #%s" % (run, stream_num))
             exit(1)
         q.put(result)
     except Exception as e:
-        print("unable to connect to DB for query stream %s" % stream_num)
+        print("unable to connect to DB for query run #%s stream #%s: %s" % (run, stream_num, e))
         exit(1)
 
 
-def run_throughput_test(query_root, data_dir, result, host, port, db_name, user, password,
-                        num_streams, q):
+def run_throughput_test(query_root, data_dir, host, port, db_name, user, password,
+                        run, num_streams, verbose, read_only):
     try:
+        print("Throughput test run #%s started ..." % run)
         conn = PGDB(host, port, db_name, user, password)
-        result = Result("ThroughputRStream")
+        result = Result("ThroughputRefreshStream")
         processes = []
+        q = Queue()
         for i in range(num_streams):
             # queries
             stream_num = i + 1
-            print("Running stream #%s" % str(stream_num))
+            print("Throughput test run #%s stream #%s started ..." % (run, stream_num))
             p = Process(target=run_throughput_inner,
                         args=(query_root, data_dir, host, port, db_name, user, password,
-                              stream_num, q))
+                              run, stream_num, q, verbose))
             processes.append(p)
             p.start()
             # refresh functions
             result.startTimer()
-            if refresh_func1(conn, data_dir, stream_num):
-                return 1
-            result.setMetric("refresh_func1_stream_%s" % str(stream_num), result.stopTimer())
+            if not read_only:
+                if refresh_func1(conn, data_dir, run, stream_num, verbose):
+                    return 1
+            result.setMetric("refresh_run_%s_stream_%s_func1" % (run, stream_num), result.stopTimer())
+            #
             result.startTimer()
-            if refresh_func2(conn, data_dir, stream_num):
-                return 1
-            result.setMetric("refresh_func2_stream_%s" % str(stream_num), result.stopTimer())
+            if not read_only:
+                if refresh_func2(conn, data_dir, run, stream_num, verbose):
+                    return 1
+            result.setMetric("refresh_run_%s_stream_%s_func2" % (run, stream_num), result.stopTimer())
+            #
         q.put(result)
         for p in processes:
             p.join()
+        print("Throughput test run #%s (all streams) finished." % run)
+        for i in range(q.qsize()):
+            res = q.get(False)
+            if verbose:
+                res.printMetrics()
+            res.saveMetrics("throughput%s" % run)
     except Exception as e:
-        print("unable to execute throughput tests. e" % e)
+        print("unable to execute throughput tests in run #%s. e" % (run, e))
         return 1
 
 
@@ -580,7 +611,7 @@ def reboot():
 
 
 def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
-            scale, num_streams):
+         scale, num_streams, verbose, read_only):
     if phase == "prepare":
         ## try to build dbgen from source and quit if failed
         if build_dbgen(dbgen_dir):
@@ -622,25 +653,20 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         print("done creating indexes and foreign keys")
         result.printMetrics()
     elif phase == "query":
-        # TODO: this thing should run twice and average the results
-        result = Result("Power Test Results")
-        if run_power_test(query_root, data_dir, result, host, port, database, user, password):
-            print("running power test failed")
-            exit(1)
-        print("Power test finished.")
-        result.printMetrics()
-        result.saveMetrics("power")
-        # Throughput test
-        q = Queue()
-        if run_throughput_test(query_root, data_dir, result, host, port, database, user, password,
-                                 num_streams, q):
-            print("running throughput test failed")
-            exit(1)
-        # TODO: Might throw unimplemented exception on Mac
-        for i in range(q.qsize()):
-            r = q.get(False)
-            r.printMetrics()
-            r.saveMetrics("throughput_iter1")
+        num_runs = 2 # as per spec, the test should run twice, with a reboot between them
+        for run in range(num_runs):
+            # Power test
+            if run_power_test(query_root, data_dir, host, port, database, user, password,
+                              run, verbose, read_only):
+                print("running power test failed")
+                exit(1)
+            # Throughput test
+            if run_throughput_test(query_root, data_dir, host, port, database, user, password,
+                                   run, num_streams, verbose, read_only):
+                print("running throughput test failed")
+                exit(1)
+            if run < num_runs - 1:
+                reboot() # no need to reboot at the last run
 
 
 if __name__ == "__main__":
@@ -656,6 +682,8 @@ if __name__ == "__main__":
     parser.add_argument("-g", "--dbgen-dir", default = "./tpch-dbgen", help = "Directory containing tpch dbgen source; default is ./tpch-dbgen")
     parser.add_argument("-s", "--scale", type = float, default = 1.0, help = "Size of the data generated; default is 1.0 = 1GB")
     parser.add_argument("-n", "--num-streams", type = int, default = 1, help = "Number of streams to run the throughput test with; default is 1")
+    parser.add_argument("-b", "--verbose", help = "Print more information to standard output", action="store_true")
+    parser.add_argument("-r", "--read-only", help = "Do not execute refresh functions during the query phase, whcih allows for running it repeatedly", action="store_true")
     args = parser.parse_args()
 
     ## Extract all arguments into variables
@@ -670,7 +698,9 @@ if __name__ == "__main__":
     num_streams = args.num_streams
     user = args.user
     password = args.password
+    verbose = args.verbose
+    read_only = args.read_only
 
     ## main
-    main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir, scale, num_streams)
+    main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir, scale, num_streams, verbose, read_only)
 
