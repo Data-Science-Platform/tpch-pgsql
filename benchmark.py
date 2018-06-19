@@ -118,7 +118,6 @@ class Result:
 
     def saveMetrics(self, folder):
         path = os.path.join(RESULTS_DIR, folder)
-        shutil.rmtree(path)
         os.makedirs(path, exist_ok = True)
         metrics = dict()
         for key, value in self.__metrics__.items():
@@ -784,6 +783,8 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         print("done creating indexes and foreign keys")
         result.printMetrics()
     elif phase == "query":
+        if os.path.exists(RESULTS_DIR) and os.path.isdir(RESULTS_DIR):
+            shutil.rmtree(RESULTS_DIR)
         for run in range(NUM_RUNS):
             # Power test
             if run_power_test(query_root, data_dir, host, port, database, user, password,
