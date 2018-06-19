@@ -115,6 +115,7 @@ class Result:
 
     def saveMetrics(self, folder):
         path = os.path.join(RESULTS_DIR, folder)
+        shutil.rmtree(path)
         os.makedirs(path, exist_ok = True)
         metrics = dict()
         for key, value in self.__metrics__.items():
