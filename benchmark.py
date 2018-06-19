@@ -108,7 +108,7 @@ class Result:
         print("========================================")
 
     def printResultFooter(self):
-        printResultHeader("End Results")
+        self.printResultHeader("End Results")
 
     def printMetrics(self, title = None):
         self.printResultHeader(title)
