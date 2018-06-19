@@ -718,7 +718,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--scale", type = float, default = 1.0, help = "Size of the data generated; default is 1.0 = 1GB")
     parser.add_argument("-n", "--num-streams", type = int, default = 0, help = "Number of streams to run the throughput test with; default is 0, i.e. based on scale factor SF")
     parser.add_argument("-b", "--verbose", help = "Print more information to standard output", action="store_true")
-    parser.add_argument("-r", "--read-only", help = "Do not execute refresh functions during the query phase, whcih allows for running it repeatedly", action="store_true")
+    parser.add_argument("-r", "--read-only", help = "Do not execute refresh functions during the query phase, which allows for running it repeatedly", action="store_true")
     args = parser.parse_args()
 
     ## Extract all arguments into variables
