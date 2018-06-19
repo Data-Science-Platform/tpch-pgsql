@@ -68,6 +68,9 @@ QUERY_ORDER = [ # As given in appendix A of the TPCH-specification
         [3, 7, 14, 15, 6, 5, 21, 20, 18, 10, 4, 16, 19, 1, 13, 9, 8, 17, 11, 12, 22, 2],
         [13, 15, 17, 1, 22, 11, 3, 4, 7, 20, 14, 21, 9, 8, 2, 18, 16, 6, 10, 12, 5, 19]
         ]
+NUM_QUERIES = len(QUERY_ORDER[0]) # 22
+NUM_RUNS = 2 # as per TPC-H spec, the test should run twice, with a reboot between them
+
 ## End Constants
 
 
@@ -653,28 +656,73 @@ def get_json_files(path):
     json_files = []
     for mode in ['power', 'throughput']:
         for run in range(2):
-            json_files += get_json_files_from(results_dir + "/" + mode + str(run) + "/")
+            json_files += get_json_files_from(path + "/" + mode + str(run) + "/")
     print(json_files)
     return json_files
 
 
-def load_results():
-    results_dir = RESULTS_DIR
+def load_result_jsons():
     jsons = dict()
-    for json_filename in get_json_files(results_dir):
+    for json_filename in get_json_files(RESULTS_DIR):
         with open(json_filename, 'r') as json_file:
             raw = json_file.read()
             js = json.loads(raw)
             jsons = {**jsons, **js} # merge two dicts
     return jsons
-def get_power_size():
-    power_size = 0
+
+
+def get_timedelta_in_seconds(jsons, format, run, stream, index):
+    time_interval = jsons[format % (run, stream, index)]
+    (hours,minutes,sf) = time_interval.split(":")
+    (seconds,fraction) = sf.split(".")
+    secs = int(hours) * 60 * 60 + \
+           int(minutes) * 60 + \
+           int(seconds) + \
+           int(fraction) / 1000000
+    return secs
+
+
+def qi(jsons, i, s): # execution time for query Qi within the query stream s
+    # i is the ordering number of the query ranging from 1 to 22
+    # s is 0 for the power function and the position of the query stream for the throughput test
+    print("qi(%i,%i)" % (i, s))
+    assert(1 <= i <= 22)
+    assert(0 <= s)
+    s0 = get_timedelta_in_seconds(jsons, 'run_%s_stream_%s_query_%s', 0, s, i)
+    s1 = get_timedelta_in_seconds(jsons, 'run_%s_stream_%s_query_%s', 1, s, i)
+    return ( s0 + s1 ) / 2 # simple average of two values
+
+
+def ri(jsons, j, s): # execution time for the refresh function RFi within a refresh stream s
+    # j is the ordering function of the refresh function ranging from 1 to 2
+    # s is 0 for the power function and the position of the pair of refresh functions in the stream for the throughput test
+    print("ri(%i,%i)" % (j, s))
+    assert(j == 1 or j == 2)
+    assert(0 <= s)
+    s0 = get_timedelta_in_seconds(jsons, 'refresh_run_%s_stream_%s_func%s', 0, s, j)
+    s1 = get_timedelta_in_seconds(jsons, 'refresh_run_%s_stream_%s_func%s', 0, s, j)
+    return ( s0 + s1 ) / 2 # simple average of two values
+
+
+def ts(jsons): # total time needed to execute the throughput test
+    # TODO
+    return 1
+
+def get_power_size(jsons, scale, num_streams):
+    qi_product = 1
+    for i in range(1, NUM_QUERIES + 1):
+        qi_product *= qi(jsons, i, 0)
+    ri_product = 1
+    for j in [1, 2]: # two refresh functions
+        ri_product *= ri(jsons, j, 0)
+    denominator = math.pow(qi_product * ri_product, 1/24)
+    power_size = (3600 / denominator) * scale
     print("Power@Size = %s" % power_size)
     return power_size
 
 
-def get_throughput_size():
-    throughput_size = 0
+def get_throughput_size(jsons, scale, num_streams):
+    throughput_size = ( ( num_streams * NUM_QUERIES ) / ts(jsons) ) * 3600 * scale
     print("Throughput@Size = %s" % throughput_size)
     return throughput_size
 
@@ -685,9 +733,10 @@ def get_qphh_size(power_size, throughput_size):
     return qphh_size
 
 
-def metrics():
-    power_size = get_power_size()
-    throughput_size = get_throughput_size()
+def metrics(scale,num_streams):
+    jsons = load_result_jsons()
+    power_size = get_power_size(jsons,scale,num_streams)
+    throughput_size = get_throughput_size(jsons,scale,num_streams)
     qphh_size = get_qphh_size(power_size, throughput_size)
 
 
@@ -736,8 +785,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         print("done creating indexes and foreign keys")
         result.printMetrics()
     elif phase == "query":
-        num_runs = 2 # as per spec, the test should run twice, with a reboot between them
-        for run in range(num_runs):
+        for run in range(NUM_RUNS):
             # Power test
             if run_power_test(query_root, data_dir, host, port, database, user, password,
                               run, num_streams, verbose, read_only):
@@ -750,7 +798,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
                 exit(1)
             if run < num_runs - 1:
                 reboot() # no need to reboot at the last run
-        metrics()
+        metrics(scale, num_streams)
 
 
 if __name__ == "__main__":
