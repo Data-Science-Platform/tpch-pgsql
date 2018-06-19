@@ -642,6 +642,30 @@ def scale_to_num_streams(scale):
     return num_streams
 
 
+def get_json_files_from(path):
+    json_files = [pos_json for pos_json in os.listdir(path) if pos_json.endswith('.json')]
+    json_files = [path + s for s in json_files]
+    return json_files
+
+
+def get_json_files(path):
+    json_files = []
+    for mode in ['power', 'throughput']:
+        for run in range(2):
+            json_files += get_json_files_from(results_dir + "/" + mode + str(run) + "/")
+    print(json_files)
+    return json_files
+
+
+def load_results():
+    results_dir = RESULTS_DIR
+    jsons = dict()
+    for json_filename in get_json_files(results_dir):
+        with open(json_filename, 'r') as json_file:
+            raw = json_file.read()
+            js = json.loads(raw)
+            jsons = {**jsons, **js} # merge two dicts
+    return jsons
 def get_power_size():
     power_size = 0
     print("Power@Size = %s" % power_size)
