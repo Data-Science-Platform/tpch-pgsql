@@ -609,6 +609,8 @@ def niceprint(txt, width):
     
 
 def reboot():
+    # TODO: we need another solution, this is fine for a local DB and running with sudo rights
+    # but the DB can be remote, user running the test has no sudo, etc.
     width = 60
     print("*"*width)
     niceprint("Restarting PostgreSQL ...", width)
@@ -705,7 +707,7 @@ def ri(jsons, j, s): # execution time for the refresh function RFi within a refr
 
 
 def ts(jsons): # total time needed to execute the throughput test
-    # TODO
+    # TODO: total time for throughput tests needs to be implemented
     return 1
 
 def get_power_size(jsons, scale, num_streams):
