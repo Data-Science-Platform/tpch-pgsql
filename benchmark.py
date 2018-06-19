@@ -784,7 +784,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         print("done creating indexes and foreign keys")
         result.printMetrics()
     elif phase == "query":
-        for run in []:#range(NUM_RUNS):
+        for run in range(NUM_RUNS):
             # Power test
             if run_power_test(query_root, data_dir, host, port, database, user, password,
                               run, num_streams, verbose, read_only):
