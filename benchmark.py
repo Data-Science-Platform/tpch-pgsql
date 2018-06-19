@@ -798,7 +798,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
                                    run, num_streams, verbose, read_only):
                 print("running throughput test failed")
                 exit(1)
-            if run < num_runs - 1:
+            if run < NUM_RUNS - 1:
                 reboot() # no need to reboot at the last run
         metrics(scale, num_streams)
 
