@@ -5,6 +5,7 @@ import psycopg2
 import argparse
 import os
 import time
+import math
 import subprocess
 import re
 import shutil
@@ -643,6 +644,30 @@ def scale_to_num_streams(scale):
     return num_streams
 
 
+def get_power_size():
+    power_size = 0
+    print("Power@Size = %s" % power_size)
+    return power_size
+
+
+def get_throughput_size():
+    throughput_size = 0
+    print("Throughput@Size = %s" % throughput_size)
+    return throughput_size
+
+
+def get_qphh_size(power_size, throughput_size):
+    qphh_size = math.sqrt(power_size * throughput_size)
+    print("QphH@Size = %s" % qphh_size)
+    return qphh_size
+
+
+def metrics():
+    power_size = get_power_size()
+    throughput_size = get_throughput_size()
+    qphh_size = get_qphh_size(power_size, throughput_size)
+
+
 def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
          scale, num_streams, verbose, read_only):
     if num_streams == 0:
@@ -702,6 +727,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
                 exit(1)
             if run < num_runs - 1:
                 reboot() # no need to reboot at the last run
+        metrics()
 
 
 if __name__ == "__main__":
