@@ -659,7 +659,6 @@ def get_json_files(path):
     for mode in ['power', 'throughput']:
         for run in range(2):
             json_files += get_json_files_from(path + "/" + mode + str(run) + "/")
-    print(json_files)
     return json_files
 
 
@@ -687,7 +686,6 @@ def get_timedelta_in_seconds(jsons, format, run, stream, index):
 def qi(jsons, i, s): # execution time for query Qi within the query stream s
     # i is the ordering number of the query ranging from 1 to 22
     # s is 0 for the power function and the position of the query stream for the throughput test
-    print("qi(%i,%i)" % (i, s))
     assert(1 <= i <= 22)
     assert(0 <= s)
     s0 = get_timedelta_in_seconds(jsons, 'run_%s_stream_%s_query_%s', 0, s, i)
@@ -698,7 +696,6 @@ def qi(jsons, i, s): # execution time for query Qi within the query stream s
 def ri(jsons, j, s): # execution time for the refresh function RFi within a refresh stream s
     # j is the ordering function of the refresh function ranging from 1 to 2
     # s is 0 for the power function and the position of the pair of refresh functions in the stream for the throughput test
-    print("ri(%i,%i)" % (j, s))
     assert(j == 1 or j == 2)
     assert(0 <= s)
     s0 = get_timedelta_in_seconds(jsons, 'refresh_run_%s_stream_%s_func%s', 0, s, j)
@@ -787,7 +784,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         print("done creating indexes and foreign keys")
         result.printMetrics()
     elif phase == "query":
-        for run in range(NUM_RUNS):
+        for run in []:#range(NUM_RUNS):
             # Power test
             if run_power_test(query_root, data_dir, host, port, database, user, password,
                               run, num_streams, verbose, read_only):
