@@ -134,7 +134,7 @@ class Password(argparse.Action):
 class PGDB:
     __connection__ = None
     __cursor__ = None
-
+    
     def __init__(self, host, port, db_name, user, password):
         # Exception handling is done by the method using this.
         self.__connection__ = psycopg2.connect("host='%s' port='%s' dbname='%s' user='%s' password='%s'" % (host, port, db_name, user, password))
@@ -246,8 +246,9 @@ def generate_data(dbgen_dir, data_dir, scale, num_streams):
 
     ## Update/Delete phase data
     ## we generate num_streams + 1 number of updates because 1 is used by the power test
-    p = subprocess.Popen(["./dbgen", "-vf", "-s", str(scale), "-U", str(num_streams + 1)],
-                            cwd = dbgen_dir)
+    ## and multiplied by 2 because there are two runs
+    p = subprocess.Popen(["./dbgen", "-vf", "-s", str(scale), "-U", str(2 * (num_streams + 1))],
+                         cwd = dbgen_dir)
     p.communicate()
     if (not p.returncode):
         update_dir = os.path.join(data_dir, UPDATE_DIR)
@@ -427,11 +428,12 @@ def insert_lineitem(cols, conn):
     conn.executeQuery(li_insert_stmt)
 
 
-def refresh_func1(conn, data_dir, run, stream_num, verbose):
+def refresh_func1(conn, data_dir, run, stream, num_streams, verbose):
     try:
         if verbose:
-            print("Running refresh function #1 in run #%s stream #%s" % (run, stream_num))
-        file_nr = stream_num + 1 # generated files are named 1,2,3,... while streams are indexed 0,1,2,...
+            print("Running refresh function #1 in run #%s stream #%s" % (run, stream))
+        file_nr = stream + 1 # generated files are named 1,2,3,... while streams are indexed 0,1,2,...
+        file_nr += run * (num_streams+1) # and we have two runs
         filepath_o = os.path.join(data_dir, UPDATE_DIR, "orders.tbl.u" + str(file_nr) + ".csv")
         filepath_l = os.path.join(data_dir, UPDATE_DIR, "lineitem.tbl.u" + str(file_nr) + ".csv")
         with open(filepath_o) as orders_file, open(filepath_l) as lineitem_file:
@@ -470,11 +472,13 @@ def refresh_func1(conn, data_dir, run, stream_num, verbose):
         return 1
 
 
-def refresh_func2(conn, data_dir, run, stream_num, verbose):
+def refresh_func2(conn, data_dir, run, stream, num_streams, verbose):
     try:
         if verbose:
-            print("Running refresh function #2 in run #%s stream #%s" % (run, stream_num))
-        filepath = os.path.join(data_dir, DELETE_DIR, "delete." + str(stream_num+1) + ".csv")
+            print("Running refresh function #2 in run #%s stream #%s" % (run, stream))
+        file_nr = stream + 1
+        file_nr += run * (num_streams+1)
+        filepath = os.path.join(data_dir, DELETE_DIR, "delete." + str(file_nr) + ".csv")
         with open(filepath, 'r') as in_file:
             for ids in grouper(in_file, 100, ''):
                 query = "DELETE FROM orders WHERE O_ORDERKEY IN (%s)" % ", ".join([x.strip() for x in ids if x.strip()])
@@ -486,43 +490,45 @@ def refresh_func2(conn, data_dir, run, stream_num, verbose):
         return 1
 
 
-def run_query_stream(conn, query_root, run, stream_num, result, verbose):
-    order = QUERY_ORDER[stream_num % len(QUERY_ORDER)]
+def run_query_stream(conn, query_root, run, stream, num_streams, result, verbose):
+    index = (run * (num_streams+1) + stream) % len(QUERY_ORDER)
+    order = QUERY_ORDER[index]
     for i in range(0, 22):
         try:
             if verbose:
-                print("Running query #%s in run #%s stream #%s ..." % (order[i], run, stream_num))
+                print("Running query #%s in run #%s stream #%s ..." % (order[i], run, stream))
             filepath = os.path.join(query_root, GENERATED_QUERY_DIR, str(order[i]) + ".sql")
             result.startTimer()
             conn.executeQueryFromFile(filepath)
-            result.setMetric("run_%s_stream_%s_query_%s" % (run, stream_num, order[i]), result.stopTimer())
+            result.setMetric("run_%s_stream_%s_query_%s" % (run, stream, order[i]), result.stopTimer())
         except Exception as e:
-            print("unable to execute query %s in run %s stream %s: %s" % (order[i], run, stream_num, e))
+            print("unable to execute query %s in run %s stream %s: %s" % (order[i], run, stream, e))
             return 1
     return 0
 
 
 def run_power_test(query_root, data_dir, host, port, db_name, user, password,
-                   run, verbose, read_only):
+                   run, num_streams, verbose, read_only):
     try:
         print("Power test run #%s started ..." % run)
         conn = PGDB(host, port, db_name, user, password)
         result = Result("Power")
         result.startTimer()
+        stream = 0 # constant for power test
         #
         if not read_only:
-            if refresh_func1(conn, data_dir, run, 0, verbose):
+            if refresh_func1(conn, data_dir, run, stream, num_streams, verbose):
                 return 1
-        result.setMetric("refresh_run_%s_stream_%s_func1" % (run, str(0)), result.stopTimer())
+        result.setMetric("refresh_run_%s_stream_%s_func1" % (run, stream), result.stopTimer())
         #
-        if run_query_stream(conn, query_root, run, 0, result, verbose):
+        if run_query_stream(conn, query_root, run, stream, num_streams, result, verbose):
             return 1
         #
         result.startTimer()
         if not read_only:
-            if refresh_func2(conn, data_dir, run, 0, verbose):
+            if refresh_func2(conn, data_dir, run, stream, num_streams, verbose):
                 return 1
-        result.setMetric("refresh_run_%s_stream_%s_func2" % (run, str(0)), result.stopTimer())
+        result.setMetric("refresh_run_%s_stream_%s_func2" % (run, stream), result.stopTimer())
         #
         print("Power test run #%s finished." % run)
         if verbose:
@@ -534,16 +540,16 @@ def run_power_test(query_root, data_dir, host, port, db_name, user, password,
 
 
 def run_throughput_inner(query_root, data_dir, host, port, db_name, user, password, 
-                         run, stream_num, q, verbose):
+                         run, stream, num_streams, q, verbose):
     try:
         conn = PGDB(host, port, db_name, user, password)
-        result = Result("ThroughputQueryStream%s" % stream_num)
-        if run_query_stream(conn, query_root, run, stream_num, result, verbose):
-            print("unable to finish query run #%s stream #%s" % (run, stream_num))
+        result = Result("ThroughputQueryStream%s" % stream)
+        if run_query_stream(conn, query_root, run, stream, num_streams, result, verbose):
+            print("unable to finish query run #%s stream #%s" % (run, stream))
             exit(1)
         q.put(result)
     except Exception as e:
-        print("unable to connect to DB for query run #%s stream #%s: %s" % (run, stream_num, e))
+        print("unable to connect to DB for query run #%s stream #%s: %s" % (run, stream, e))
         exit(1)
 
 
@@ -556,26 +562,28 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
         processes = []
         q = Queue()
         for i in range(num_streams):
+            stream = i + 1
             # queries
-            stream_num = i + 1
-            print("Throughput test run #%s stream #%s started ..." % (run, stream_num))
+            print("Throughput test run #%s stream #%s started ..." % (run, stream))
             p = Process(target=run_throughput_inner,
                         args=(query_root, data_dir, host, port, db_name, user, password,
-                              run, stream_num, q, verbose))
+                              run, stream, num_streams, q, verbose))
             processes.append(p)
             p.start()
+        for i in range(num_streams):
+            stream = i + 1
             # refresh functions
             result.startTimer()
             if not read_only:
-                if refresh_func1(conn, data_dir, run, stream_num, verbose):
+                if refresh_func1(conn, data_dir, run, stream, num_streams,verbose):
                     return 1
-            result.setMetric("refresh_run_%s_stream_%s_func1" % (run, stream_num), result.stopTimer())
+            result.setMetric("refresh_run_%s_stream_%s_func1" % (run, stream), result.stopTimer())
             #
             result.startTimer()
             if not read_only:
-                if refresh_func2(conn, data_dir, run, stream_num, verbose):
+                if refresh_func2(conn, data_dir, run, stream, num_streams, verbose):
                     return 1
-            result.setMetric("refresh_run_%s_stream_%s_func2" % (run, stream_num), result.stopTimer())
+            result.setMetric("refresh_run_%s_stream_%s_func2" % (run, stream), result.stopTimer())
             #
         q.put(result)
         for p in processes:
@@ -610,8 +618,35 @@ def reboot():
     print("*"*width)
 
 
+def scale_to_num_streams(scale):
+    num_streams = 2
+    if scale <= 1:
+        num_streams = 2
+    elif scale <= 10:
+        num_streams = 3
+    elif scale <= 30:
+        num_streams = 4
+    elif scale <= 100:
+        num_streams = 5
+    elif scale <= 300:
+        num_streams = 6
+    elif scale <= 1000:
+        num_streams = 7
+    elif scale <= 3000:
+        num_streams = 8
+    elif scale <= 10000:
+        num_streams = 9
+    elif scale <= 30000:
+        num_streams = 10
+    else:
+        num_streams = 11
+    return num_streams
+
+
 def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
          scale, num_streams, verbose, read_only):
+    if num_streams == 0:
+        num_streams = scale_to_num_streams(scale)
     if phase == "prepare":
         ## try to build dbgen from source and quit if failed
         if build_dbgen(dbgen_dir):
@@ -657,7 +692,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         for run in range(num_runs):
             # Power test
             if run_power_test(query_root, data_dir, host, port, database, user, password,
-                              run, verbose, read_only):
+                              run, num_streams, verbose, read_only):
                 print("running power test failed")
                 exit(1)
             # Throughput test
@@ -681,7 +716,7 @@ if __name__ == "__main__":
     parser.add_argument("-q", "--query-root", default = "./query_root", help = "Directory for query files; default is ./query_root")
     parser.add_argument("-g", "--dbgen-dir", default = "./tpch-dbgen", help = "Directory containing tpch dbgen source; default is ./tpch-dbgen")
     parser.add_argument("-s", "--scale", type = float, default = 1.0, help = "Size of the data generated; default is 1.0 = 1GB")
-    parser.add_argument("-n", "--num-streams", type = int, default = 1, help = "Number of streams to run the throughput test with; default is 1")
+    parser.add_argument("-n", "--num-streams", type = int, default = 0, help = "Number of streams to run the throughput test with; default is 0, i.e. based on scale factor SF")
     parser.add_argument("-b", "--verbose", help = "Print more information to standard output", action="store_true")
     parser.add_argument("-r", "--read-only", help = "Do not execute refresh functions during the query phase, whcih allows for running it repeatedly", action="store_true")
     args = parser.parse_args()
