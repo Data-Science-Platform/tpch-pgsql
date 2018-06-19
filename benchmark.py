@@ -560,7 +560,8 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
     try:
         print("Throughput test run #%s started ..." % run)
         conn = PGDB(host, port, db_name, user, password)
-        result = Result("ThroughputRefreshStream")
+        total = Result("ThroughputTotal")
+        total.startTimer()
         processes = []
         q = Queue()
         for i in range(num_streams):
@@ -575,6 +576,7 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
         for i in range(num_streams):
             stream = i + 1
             # refresh functions
+            result = Result("ThroughputRefreshStream")
             result.startTimer()
             if not read_only:
                 if refresh_func1(conn, data_dir, run, stream, num_streams,verbose):
@@ -596,6 +598,12 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
             if verbose:
                 res.printMetrics()
             res.saveMetrics("throughput%s" % run)
+        #
+        total.setMetric("throughput_test_total_run_%s" % run, total.stopTimer())
+        if verbose:
+            total.printMetrics()
+        total.saveMetrics("throughput%s" % run)
+        #
     except Exception as e:
         print("unable to execute throughput tests in run #%s. e" % (run, e))
         return 1
@@ -671,8 +679,8 @@ def load_result_jsons():
     return jsons
 
 
-def get_timedelta_in_seconds(jsons, format, run, stream, index):
-    time_interval = jsons[format % (run, stream, index)]
+def get_timedelta_in_seconds(jsons, metric_name):
+    time_interval = jsons[metric_name]
     (hours,minutes,sf) = time_interval.split(":")
     (seconds,fraction) = sf.split(".")
     secs = int(hours) * 60 * 60 + \
@@ -687,8 +695,9 @@ def qi(jsons, i, s): # execution time for query Qi within the query stream s
     # s is 0 for the power function and the position of the query stream for the throughput test
     assert(1 <= i <= 22)
     assert(0 <= s)
-    s0 = get_timedelta_in_seconds(jsons, 'run_%s_stream_%s_query_%s', 0, s, i)
-    s1 = get_timedelta_in_seconds(jsons, 'run_%s_stream_%s_query_%s', 1, s, i)
+    metric_name = 'run_%s_stream_%s_query_%s'
+    s0 = get_timedelta_in_seconds(jsons, metric_name % (0, s, i))
+    s1 = get_timedelta_in_seconds(jsons, metric_name % (1, s, i))
     return ( s0 + s1 ) / 2 # simple average of two values
 
 
@@ -697,14 +706,18 @@ def ri(jsons, j, s): # execution time for the refresh function RFi within a refr
     # s is 0 for the power function and the position of the pair of refresh functions in the stream for the throughput test
     assert(j == 1 or j == 2)
     assert(0 <= s)
-    s0 = get_timedelta_in_seconds(jsons, 'refresh_run_%s_stream_%s_func%s', 0, s, j)
-    s1 = get_timedelta_in_seconds(jsons, 'refresh_run_%s_stream_%s_func%s', 0, s, j)
+    metric_name = 'refresh_run_%s_stream_%s_func%s'
+    s0 = get_timedelta_in_seconds(jsons, metric_name % (0, s, j))
+    s1 = get_timedelta_in_seconds(jsons, metric_name % (1, s, j))
     return ( s0 + s1 ) / 2 # simple average of two values
 
 
 def ts(jsons): # total time needed to execute the throughput test
     # TODO: total time for throughput tests needs to be implemented
-    return 1
+    metric_name = 'throughput_test_total_run_%s'
+    s0 = get_timedelta_in_seconds(jsons, metric_name % 0)
+    s1 = get_timedelta_in_seconds(jsons, metric_name % 1)
+    return  ( s0 + s1 ) / 2
 
 def get_power_size(jsons, scale, num_streams):
     qi_product = 1
