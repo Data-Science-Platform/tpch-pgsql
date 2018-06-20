@@ -691,7 +691,6 @@ def ri(jsons, j, s): # execution time for the refresh function RFi within a refr
 
 
 def ts(jsons): # total time needed to execute the throughput test
-    # TODO: total time for throughput tests needs to be implemented
     metric_name = 'throughput_test_total'
     ret = get_timedelta_in_seconds(jsons, metric_name)
     return ret
