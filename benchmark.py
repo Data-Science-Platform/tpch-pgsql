@@ -796,9 +796,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         print("done creating indexes and foreign keys")
         result.printMetrics()
     elif phase == "query":
-        if os.path.exists(RESULTS_DIR) and os.path.isdir(RESULTS_DIR):
-            shutil.rmtree(RESULTS_DIR)
-        for run in range(NUM_RUNS):
+        for run in [0,1]:
             # Power test
             if run_power_test(query_root, data_dir, host, port, database, user, password,
                               run, num_streams, verbose, read_only):
@@ -809,8 +807,6 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
                                    run, num_streams, verbose, read_only):
                 print("running throughput test failed")
                 exit(1)
-            if run < NUM_RUNS - 1:
-                reboot() # no need to reboot at the last run
         metrics(scale, num_streams)
 
 
