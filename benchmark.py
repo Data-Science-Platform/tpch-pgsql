@@ -695,6 +695,7 @@ def ts(jsons): # total time needed to execute the throughput test
     ret = get_timedelta_in_seconds(jsons, metric_name)
     return ret
 
+
 def get_power_size(jsons, scale, num_streams):
     qi_product = 1
     for i in range(1, NUM_QUERIES + 1):
@@ -787,19 +788,44 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "PGTPCH")
-    parser.add_argument("phase",  help = "Phase of PGTPCH to run.", choices = ["prepare", "load", "query"])
-    parser.add_argument("-a", "--host", default = "localhost", help = "Address of host on which PostgreSQL instance runs; default is localhost")
-    parser.add_argument("-p", "--port", type = int, default = 5432, help = "Port on which PostgreSQL instance runs; default is 5432")
-    parser.add_argument("-u", "--user", default = "postgres", help = "User for the PostgreSQL instance; default is postgres")
-    parser.add_argument("-v", "--password", nargs = '?', default = "test123", action = Password, help = "Password for the PostgreSQL instance; default is test123")
-    parser.add_argument("-d", "--database", default = "tpch", help = "Name of the database; default is tpch")
-    parser.add_argument("-i", "--data-dir", default = "./data", help = "Directory for generated data; default is ./data")
-    parser.add_argument("-q", "--query-root", default = "./query_root", help = "Directory for query files; default is ./query_root")
-    parser.add_argument("-g", "--dbgen-dir", default = "./tpch-dbgen", help = "Directory containing tpch dbgen source; default is ./tpch-dbgen")
-    parser.add_argument("-s", "--scale", type = float, default = 1.0, help = "Size of the data generated; default is 1.0 = 1GB")
-    parser.add_argument("-n", "--num-streams", type = int, default = 0, help = "Number of streams to run the throughput test with; default is 0, i.e. based on scale factor SF")
-    parser.add_argument("-b", "--verbose", help = "Print more information to standard output", action="store_true")
-    parser.add_argument("-r", "--read-only", help = "Do not execute refresh functions during the query phase, which allows for running it repeatedly", action="store_true")
+    default_host = "localhost"
+    default_port = 5432
+    default_username = "postgres"
+    default_password = "test123"
+    default_dbname = "tpch"
+    default_data_dir = "./data"
+    default_query_root = "./query_root"
+    default_dbgen_dir = "./tpch-dbgen"
+    default_scale = 1.0
+    default_num_streams = 0
+
+    parser.add_argument("phase", choices=["prepare", "load", "query"],
+                        help="Phase of PGTPCH to run.")
+    parser.add_argument("-H", "--host", default=default_host,
+                        help="Address of host on which PostgreSQL instance runs; default is %s" % default_host)
+    parser.add_argument("-p", "--port", type=int, default=default_port,
+                        help="Port on which PostgreSQL instance runs; default is " % default_port)
+    parser.add_argument("-U", "--username", default=default_username,
+                        help="User for the PostgreSQL instance; default is %" % default_username)
+    parser.add_argument("-W", "--password", nargs='?', default=default_password, action=Password,
+                        help="Password for the PostgreSQL instance; default is %s" % default_password)
+    parser.add_argument("-d", "--dbname", default=default_dbname,
+                        help="Name of the database; default is %s" % default_dbname)
+    parser.add_argument("-i", "--data-dir", default=default_data_dir,
+                        help="Directory for generated data; default is %s" % default_data_dir)
+    parser.add_argument("-q", "--query-root", default=default_query_root,
+                        help="Directory for query files; default is %s" % default_query_root)
+    parser.add_argument("-g", "--dbgen-dir", default=default_dbgen_dir,
+                        help="Directory containing tpch dbgen source; default is %s" % default_dbgen_dir)
+    parser.add_argument("-s", "--scale", type=float, default=default_scale,
+                        help="Size of the data generated, scale factor; default is %s = 1GB" % default_scale)
+    parser.add_argument("-n", "--num-streams", type=int, default=default_num_streams,
+                        help="Number of streams to run the throughput test with; default is %s, i.e." +
+                             "based on scale factor SF" % default_num_streams)
+    parser.add_argument("-b", "--verbose", action="store_true",
+                        help="Print more information to standard output")
+    parser.add_argument("-r", "--read-only", action="store_true",
+                        help="Do not execute refresh functions during the query phase, which allows for running it repeatedly")
     args = parser.parse_args()
 
     ## Extract all arguments into variables
@@ -819,3 +845,4 @@ if __name__ == "__main__":
 
     ## main
     main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir, scale, num_streams, verbose, read_only)
+
