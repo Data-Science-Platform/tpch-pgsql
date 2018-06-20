@@ -34,8 +34,9 @@ before_script:
   - psql --command="GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;" -U postgres
 
 script:
+  - ./benchmark.py
   - ./benchmark.py --help
-  - export PYTHONPATH=$(pwd) && echo $PYTHONPATH && cd test/ && python -m unittest test_benchmark.py --verbose
+  - export PYTHONPATH=$(pwd) && echo $PYTHONPATH && cd test/ && python -m unittest test_benchmark.py --verbose & cd ..
   - ./benchmark.py --scale 0.01 prepare
   - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD load
   - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD query
