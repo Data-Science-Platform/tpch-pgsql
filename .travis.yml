@@ -35,7 +35,6 @@ before_script:
 
 script:
   - ./benchmark.py --help
-  - python -m unittest C:/APPS/github/tpch-pgsql/test/test_benchmark.py --verbose
   - ./benchmark.py --scale 0.01 prepare
   - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD load
   - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD query
