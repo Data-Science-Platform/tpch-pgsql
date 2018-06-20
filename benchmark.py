@@ -115,8 +115,8 @@ class Result:
             print("Time taken for %s: %s" % (key, value))
         self.printResultFooter()
 
-    def saveMetrics(self, folder):
-        path = os.path.join(RESULTS_DIR, folder)
+    def saveMetrics(self, run_timestamp, folder):
+        path = os.path.join(RESULTS_DIR, run_timestamp, folder)
         os.makedirs(path, exist_ok = True)
         metrics = dict()
         for key, value in self.__metrics__.items():
@@ -506,7 +506,7 @@ def run_query_stream(conn, query_root, stream, num_streams, result, verbose):
 
 
 def run_power_test(query_root, data_dir, host, port, db_name, user, password,
-                   num_streams, verbose, read_only):
+                   run_timestamp, num_streams, verbose, read_only):
     try:
         print("Power test started ...")
         conn = PGDB(host, port, db_name, user, password)
@@ -531,7 +531,7 @@ def run_power_test(query_root, data_dir, host, port, db_name, user, password,
         print("Power test finished.")
         if verbose:
             result.printMetrics()
-        result.saveMetrics("power")
+        result.saveMetrics(run_timestamp, "power")
     except Exception as e:
         print("unable to run power test. DB connection failed: %s" % e)
         return 1
@@ -552,7 +552,7 @@ def run_throughput_inner(query_root, data_dir, host, port, db_name, user, passwo
 
 
 def run_throughput_test(query_root, data_dir, host, port, db_name, user, password,
-                        num_streams, verbose, read_only):
+                        run_timestamp, num_streams, verbose, read_only):
     try:
         print("Throughput test started ...")
         conn = PGDB(host, port, db_name, user, password)
@@ -593,12 +593,12 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
             res = q.get(False)
             if verbose:
                 res.printMetrics()
-            res.saveMetrics("throughput")
+            res.saveMetrics(run_timestamp, "throughput")
         #
         total.setMetric("throughput_test_total", total.stopTimer())
         if verbose:
             total.printMetrics()
-        total.saveMetrics("throughput")
+        total.saveMetrics(run_timestamp, "throughput")
         #
     except Exception as e:
         print("unable to execute throughput test: %s" % e)
@@ -638,29 +638,30 @@ def scale_to_num_streams(scale):
 
 def get_json_files_from(path):
     json_files = [pos_json for pos_json in os.listdir(path) if pos_json.endswith('.json')]
-    json_files = [path + s for s in json_files]
+    json_files = [os.path.join(path , s) for s in json_files]
     return json_files
 
 
 def get_json_files(path):
     json_files = []
-    for mode in ['power', 'throughput']:
-        json_files += get_json_files_from(path + "/" + mode + "/")
+    for run_timestamp in os.listdir(os.path.join(path)):
+        for mode in ['power', 'throughput']:
+            json_files += get_json_files_from(os.path.join(path, run_timestamp, mode))
     return json_files
 
 
 def load_result_jsons():
-    jsons = dict()
+    jsons = []
     for json_filename in get_json_files(RESULTS_DIR):
         with open(json_filename, 'r') as json_file:
             raw = json_file.read()
             js = json.loads(raw)
-            jsons = {**jsons, **js} # merge two dicts
+            for key, value in js.items():
+                jsons.append({"key": key, "value": value})
     return jsons
 
 
-def get_timedelta_in_seconds(jsons, metric_name):
-    time_interval = jsons[metric_name]
+def get_timedelta_in_seconds(time_interval):
     (hours,minutes,sf) = time_interval.split(":")
     (seconds,fraction) = sf.split(".")
     secs = int(hours) * 60 * 60 + \
@@ -670,13 +671,19 @@ def get_timedelta_in_seconds(jsons, metric_name):
     return secs
 
 
+def get_average(jsons, metric_name):
+    values = [js["value"] for js in jsons if js["key"] == metric_name]
+    seconds = [get_timedelta_in_seconds(value) for value in values]
+    avg = sum(seconds) / len(values)
+    return avg
+
 def qi(jsons, i, s): # execution time for query Qi within the query stream s
     # i is the ordering number of the query ranging from 1 to 22
     # s is 0 for the power function and the position of the query stream for the throughput test
     assert(1 <= i <= 22)
     assert(0 <= s)
-    metric_name = 'query_stream_%s_query_%s'
-    ret = get_timedelta_in_seconds(jsons, metric_name % (s, i))
+    metric_name = 'query_stream_%s_query_%s' % (s, i)
+    ret = get_average(jsons, metric_name)
     return ret
 
 
@@ -685,14 +692,14 @@ def ri(jsons, j, s): # execution time for the refresh function RFi within a refr
     # s is 0 for the power function and the position of the pair of refresh functions in the stream for the throughput test
     assert(j == 1 or j == 2)
     assert(0 <= s)
-    metric_name = 'refresh_stream_%s_func_%s'
-    ret = get_timedelta_in_seconds(jsons, metric_name % (s, j))
+    metric_name = 'refresh_stream_%s_func_%s' % (s, j)
+    ret = get_average(jsons, metric_name)
     return ret
 
 
 def ts(jsons): # total time needed to execute the throughput test
     metric_name = 'throughput_test_total'
-    ret = get_timedelta_in_seconds(jsons, metric_name)
+    ret = get_average(jsons, metric_name)
     return ret
 
 
@@ -773,8 +780,9 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         print("done creating indexes and foreign keys")
         result.printMetrics()
     elif phase == "query":
+        run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
         if run_power_test(query_root, data_dir, host, port, database, user, password,
-                          num_streams, verbose, read_only):
+                          run_timestamp, num_streams, verbose, read_only):
             print("running power test failed")
             exit(1)
         # Throughput test
