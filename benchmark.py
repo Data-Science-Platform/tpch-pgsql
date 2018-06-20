@@ -69,7 +69,6 @@ QUERY_ORDER = [ # As given in appendix A of the TPCH-specification
         [13, 15, 17, 1, 22, 11, 3, 4, 7, 20, 14, 21, 9, 8, 2, 18, 16, 6, 10, 12, 5, 19]
         ]
 NUM_QUERIES = len(QUERY_ORDER[0]) # 22
-NUM_RUNS = 2 # as per TPC-H spec, the test should run twice, with a reboot between them
 
 ## End Constants
 
@@ -499,7 +498,7 @@ def run_query_stream(conn, query_root, stream, num_streams, result, verbose):
             filepath = os.path.join(query_root, GENERATED_QUERY_DIR, str(order[i]) + ".sql")
             result.startTimer()
             conn.executeQueryFromFile(filepath)
-            result.setMetric("stream_%s_query_%s" % (stream, order[i]), result.stopTimer())
+            result.setMetric("query_stream_%s_query_%s" % (stream, order[i]), result.stopTimer())
         except Exception as e:
             print("unable to execute query %s in stream %s: %s" % (order[i], stream, e))
             return 1
@@ -518,7 +517,7 @@ def run_power_test(query_root, data_dir, host, port, db_name, user, password,
         if not read_only:
             if refresh_func1(conn, data_dir, stream, num_streams, verbose):
                 return 1
-        result.setMetric("refresh_stream_%s_func1" % stream, result.stopTimer())
+        result.setMetric("refresh_stream_%s_func_1" % stream, result.stopTimer())
         #
         if run_query_stream(conn, query_root, stream, num_streams, result, verbose):
             return 1
@@ -527,7 +526,7 @@ def run_power_test(query_root, data_dir, host, port, db_name, user, password,
         if not read_only:
             if refresh_func2(conn, data_dir, stream, num_streams, verbose):
                 return 1
-        result.setMetric("refresh_stream_%s_func2" % stream, result.stopTimer())
+        result.setMetric("refresh_stream_%s_func_2" % stream, result.stopTimer())
         #
         print("Power test finished.")
         if verbose:
@@ -578,13 +577,13 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
             if not read_only:
                 if refresh_func1(conn, data_dir, stream, num_streams, verbose):
                     return 1
-            result.setMetric("refresh_stream_%s_func1" % stream, result.stopTimer())
+            result.setMetric("refresh_stream_%s_func_1" % stream, result.stopTimer())
             #
             result.startTimer()
             if not read_only:
                 if refresh_func2(conn, data_dir, stream, num_streams, verbose):
                     return 1
-            result.setMetric("refresh_stream_%s_func2" % stream, result.stopTimer())
+            result.setMetric("refresh_stream_%s_func_2" % stream, result.stopTimer())
             #
         q.put(result)
         for p in processes:
@@ -596,10 +595,10 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
                 res.printMetrics()
             res.saveMetrics("throughput")
         #
-        total.setMetric("throughput_test_total_run_%s" % run, total.stopTimer())
+        total.setMetric("throughput_test_total", total.stopTimer())
         if verbose:
             total.printMetrics()
-        total.saveMetrics("throughput%s" % run)
+        total.saveMetrics("throughput")
         #
     except Exception as e:
         print("unable to execute throughput test: %s" % e)
@@ -646,8 +645,7 @@ def get_json_files_from(path):
 def get_json_files(path):
     json_files = []
     for mode in ['power', 'throughput']:
-        for run in range(2):
-            json_files += get_json_files_from(path + "/" + mode + str(run) + "/")
+        json_files += get_json_files_from(path + "/" + mode + "/")
     return json_files
 
 
@@ -677,10 +675,9 @@ def qi(jsons, i, s): # execution time for query Qi within the query stream s
     # s is 0 for the power function and the position of the query stream for the throughput test
     assert(1 <= i <= 22)
     assert(0 <= s)
-    metric_name = 'run_%s_stream_%s_query_%s'
-    s0 = get_timedelta_in_seconds(jsons, metric_name % (0, s, i))
-    s1 = get_timedelta_in_seconds(jsons, metric_name % (1, s, i))
-    return ( s0 + s1 ) / 2 # simple average of two values
+    metric_name = 'query_stream_%s_query_%s'
+    ret = get_timedelta_in_seconds(jsons, metric_name % (s, i))
+    return ret
 
 
 def ri(jsons, j, s): # execution time for the refresh function RFi within a refresh stream s
@@ -688,18 +685,16 @@ def ri(jsons, j, s): # execution time for the refresh function RFi within a refr
     # s is 0 for the power function and the position of the pair of refresh functions in the stream for the throughput test
     assert(j == 1 or j == 2)
     assert(0 <= s)
-    metric_name = 'refresh_run_%s_stream_%s_func%s'
-    s0 = get_timedelta_in_seconds(jsons, metric_name % (0, s, j))
-    s1 = get_timedelta_in_seconds(jsons, metric_name % (1, s, j))
-    return ( s0 + s1 ) / 2 # simple average of two values
+    metric_name = 'refresh_stream_%s_func_%s'
+    ret = get_timedelta_in_seconds(jsons, metric_name % (s, j))
+    return ret
 
 
 def ts(jsons): # total time needed to execute the throughput test
     # TODO: total time for throughput tests needs to be implemented
-    metric_name = 'throughput_test_total_run_%s'
-    s0 = get_timedelta_in_seconds(jsons, metric_name % 0)
-    s1 = get_timedelta_in_seconds(jsons, metric_name % 1)
-    return  ( s0 + s1 ) / 2
+    metric_name = 'throughput_test_total'
+    ret = get_timedelta_in_seconds(jsons, metric_name)
+    return ret
 
 def get_power_size(jsons, scale, num_streams):
     qi_product = 1
