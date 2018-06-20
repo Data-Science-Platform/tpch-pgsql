@@ -584,15 +584,6 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
                 if refresh_func2(conn, data_dir, stream, num_streams, verbose):
                     return 1
             result.setMetric("refresh_stream_%s_func_2" % stream, result.stopTimer())
-                if refresh_func1(conn, data_dir, run, stream, num_streams,verbose):
-                    return 1
-            result.setMetric("refresh_run_%s_stream_%s_func1" % (run, stream), result.stopTimer())
-            #
-            result.startTimer()
-            if not read_only:
-                if refresh_func2(conn, data_dir, run, stream, num_streams, verbose):
-                    return 1
-            result.setMetric("refresh_run_%s_stream_%s_func2" % (run, stream), result.stopTimer())
             #
         q.put(result)
         for p in processes:
