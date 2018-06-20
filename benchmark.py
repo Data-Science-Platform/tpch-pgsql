@@ -569,10 +569,10 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
                               stream, num_streams, q, verbose))
             processes.append(p)
             p.start()
+        result = Result("ThroughputRefreshStream")
         for i in range(num_streams):
             stream = i + 1
             # refresh functions
-            result = Result("ThroughputRefreshStream")
             result.startTimer()
             if not read_only:
                 if refresh_func1(conn, data_dir, stream, num_streams, verbose):
