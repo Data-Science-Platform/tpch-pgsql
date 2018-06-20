@@ -779,7 +779,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
             exit(1)
         # Throughput test
         if run_throughput_test(query_root, data_dir, host, port, database, user, password,
-                               num_streams, verbose, read_only):
+                               run_timestamp, num_streams, verbose, read_only):
             print("running throughput test failed")
             exit(1)
         print("done performance test")
@@ -804,9 +804,9 @@ if __name__ == "__main__":
     parser.add_argument("-H", "--host", default=default_host,
                         help="Address of host on which PostgreSQL instance runs; default is %s" % default_host)
     parser.add_argument("-p", "--port", type=int, default=default_port,
-                        help="Port on which PostgreSQL instance runs; default is " % default_port)
+                        help="Port on which PostgreSQL instance runs; default is %s" % str(default_port))
     parser.add_argument("-U", "--username", default=default_username,
-                        help="User for the PostgreSQL instance; default is %" % default_username)
+                        help="User for the PostgreSQL instance; default is %s" % default_username)
     parser.add_argument("-W", "--password", nargs='?', default=default_password, action=Password,
                         help="Password for the PostgreSQL instance; default is %s" % default_password)
     parser.add_argument("-d", "--dbname", default=default_dbname,
@@ -820,8 +820,8 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--scale", type=float, default=default_scale,
                         help="Size of the data generated, scale factor; default is %s = 1GB" % default_scale)
     parser.add_argument("-n", "--num-streams", type=int, default=default_num_streams,
-                        help="Number of streams to run the throughput test with; default is %s, i.e." +
-                             "based on scale factor SF" % default_num_streams)
+                        help="Number of streams to run the throughput test with; default is %s"  % default_num_streams +
+                             ", i.e. based on scale factor SF")
     parser.add_argument("-b", "--verbose", action="store_true",
                         help="Print more information to standard output")
     parser.add_argument("-r", "--read-only", action="store_true",
@@ -832,13 +832,13 @@ if __name__ == "__main__":
     phase = args.phase
     host = args.host
     port = args.port
-    database = args.database
+    database = args.dbname
     data_dir = args.data_dir
     query_root = args.query_root
     dbgen_dir = args.dbgen_dir
     scale = args.scale
     num_streams = args.num_streams
-    user = args.user
+    user = args.username
     password = args.password
     verbose = args.verbose
     read_only = args.read_only
