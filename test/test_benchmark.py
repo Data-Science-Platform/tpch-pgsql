@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 
 import unittest
+
 import benchmark as bm
+import mock
+import os
+
 
 class TestBenchmark(unittest.TestCase):
 
@@ -48,6 +52,34 @@ class TestBenchmark(unittest.TestCase):
         ]
         for td in testdata:
             self.assertEqual(bm.scale_to_num_streams(td["input"]), td["expected"])
+
+    def get_json_files_from(path):
+        json_files = [pos_json for pos_json in os.listdir(path) if pos_json.endswith('.json')]
+        json_files = [os.path.join(path, s) for s in json_files]
+        return json_files
+
+    @mock.patch('benchmark.os.listdir')
+    def test_get_json_files_from(self, mock_listdir):
+        mock_listdir.return_value = ['a.json', 'b.txt', 'C.json']
+        root_dir = 'dummy'
+        expected = [os.path.join(root_dir, x) for x in ['a.json', 'C.json']]
+        files = bm.get_json_files_from(root_dir)
+        self.assertEqual(expected, files,
+                         "Some json files were not found, others were included, but are not json files!")
+
+    @mock.patch('benchmark.os.listdir')
+    def test_get_json_files(self, mock_listdir):
+        mock_listdir.side_effect = [['a', 'b', 'c'],
+                                    ['a1.json'], ['a2x.json', 'a2y.json'],
+                                    [], [],
+                                    [], []]
+        root_dir = 'dummy'
+        expected = [os.path.join('dummy', 'a', 'power', 'a1.json'),
+                    os.path.join('dummy', 'a', 'throughput', 'a2x.json'),
+                    os.path.join('dummy', 'a', 'throughput', 'a2y.json')]
+        files = bm.get_json_files(root_dir)
+        self.assertEqual(expected, files,
+                         "Some json files were not found, others were included, but are not json files!")
 
 
 if __name__ == '__main__':

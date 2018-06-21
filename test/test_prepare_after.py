@@ -10,12 +10,10 @@ query_nr_range = range(1, SCALE_FACTOR+1)
 class TestPrepareAfter(unittest.TestCase):
 
     def check_dir(self, path):
-        #print(path)
         self.assertTrue(os.path.exists(path), "Folder %s does not exist!" % path)
         self.assertTrue(os.path.isdir(path), "Path %s is not a directory!" % path)
 
     def check_file(self, filename):
-        #print(filename)
         self.assertTrue(os.path.exists(filename), "File %s does not exist!" % filename)
         self.assertTrue(os.path.isfile(filename), "Path %s is not a file!" % filename)
 

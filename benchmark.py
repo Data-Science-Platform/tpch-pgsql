@@ -643,7 +643,7 @@ def scale_to_num_streams(scale):
 
 def get_json_files_from(path):
     json_files = [pos_json for pos_json in os.listdir(path) if pos_json.endswith('.json')]
-    json_files = [os.path.join(path , s) for s in json_files]
+    json_files = [os.path.join(path, s) for s in json_files]
     return json_files
 
 

@@ -9,6 +9,7 @@ dbname = "tpchdb"
 username = "tpch"
 password = "hello123"
 
+
 class TestQueryAfter(unittest.TestCase):
 
     def test_tables_created(self):
