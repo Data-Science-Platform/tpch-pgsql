@@ -25,6 +25,11 @@ GENERATED_QUERY_DIR = "perf_query_gen"
 PREP_QUERY_DIR = "prep_query"
 RESULTS_DIR = "results"
 TABLES = ['LINEITEM', 'PARTSUPP', 'ORDERS', 'CUSTOMER', 'SUPPLIER', 'NATION', 'REGION', 'PART']
+POWER = "power"
+THROUGHPUT = "throughput"
+QUERY_METRIC = "query_stream_%s_query_%s"
+REFRESH_METRIC = "refresh_stream_%s_func_%s"
+THROUGHPUT_TOTAL_METRIC = "throughput_test_total"
 QUERY_ORDER = [ # As given in appendix A of the TPCH-specification
         [14, 2, 9, 20, 6, 17, 18, 8, 21, 13, 3, 22, 16, 4, 11, 15, 1, 10, 19, 5, 7, 12],
         [21, 3, 18, 5, 11, 7, 6, 20, 17, 12, 16, 15, 13, 10, 2, 8, 14, 19, 9, 22, 1, 4],
@@ -115,8 +120,8 @@ class Result:
             print("Time taken for %s: %s" % (key, value))
         self.printResultFooter()
 
-    def saveMetrics(self, folder):
-        path = os.path.join(RESULTS_DIR, folder)
+    def saveMetrics(self, run_timestamp, folder):
+        path = os.path.join(RESULTS_DIR, run_timestamp, folder)
         os.makedirs(path, exist_ok = True)
         metrics = dict()
         for key, value in self.__metrics__.items():
@@ -234,7 +239,7 @@ def generate_data(dbgen_dir, data_dir, scale, num_streams):
     Return:
         0 if successful non zero otherwise
     """
-    p = subprocess.Popen(["./dbgen", "-vf", "-s", str(scale)], cwd = dbgen_dir)
+    p = subprocess.Popen([os.path.join(".", "dbgen"), "-vf", "-s", str(scale)], cwd = dbgen_dir)
     p.communicate()
     if (not p.returncode):
         load_dir = os.path.join(data_dir, LOAD_DIR)
@@ -247,7 +252,7 @@ def generate_data(dbgen_dir, data_dir, scale, num_streams):
 
     ## Update/Delete phase data
     ## we generate num_streams + 1 number of updates because 1 is used by the power test
-    p = subprocess.Popen(["./dbgen", "-vf", "-s", str(scale), "-U", str(num_streams + 1)],
+    p = subprocess.Popen([os.path.join(".", "dbgen"), "-vf", "-s", str(scale), "-U", str(num_streams + 1)],
                          cwd = dbgen_dir)
     p.communicate()
     if (not p.returncode):
@@ -287,7 +292,7 @@ def generate_queries(dbgen_dir, query_root):
     for i in range(1, 23):
         try:
             with open(os.path.join(query_gen_dir, str(i) + ".sql"), "w") as out_file:
-                p = subprocess.Popen(["./qgen", str(i)], cwd = dbgen_dir,
+                p = subprocess.Popen([os.path.join(".", "qgen"), str(i)], cwd = dbgen_dir,
                                         env = query_env, stdout = out_file)
                 p.communicate()
                 if p.returncode:
@@ -498,7 +503,7 @@ def run_query_stream(conn, query_root, stream, num_streams, result, verbose):
             filepath = os.path.join(query_root, GENERATED_QUERY_DIR, str(order[i]) + ".sql")
             result.startTimer()
             conn.executeQueryFromFile(filepath)
-            result.setMetric("query_stream_%s_query_%s" % (stream, order[i]), result.stopTimer())
+            result.setMetric(QUERY_METRIC % (stream, order[i]), result.stopTimer())
         except Exception as e:
             print("unable to execute query %s in stream %s: %s" % (order[i], stream, e))
             return 1
@@ -506,7 +511,7 @@ def run_query_stream(conn, query_root, stream, num_streams, result, verbose):
 
 
 def run_power_test(query_root, data_dir, host, port, db_name, user, password,
-                   num_streams, verbose, read_only):
+                   run_timestamp, num_streams, verbose, read_only):
     try:
         print("Power test started ...")
         conn = PGDB(host, port, db_name, user, password)
@@ -517,7 +522,7 @@ def run_power_test(query_root, data_dir, host, port, db_name, user, password,
         if not read_only:
             if refresh_func1(conn, data_dir, stream, num_streams, verbose):
                 return 1
-        result.setMetric("refresh_stream_%s_func_1" % stream, result.stopTimer())
+        result.setMetric(REFRESH_METRIC % (stream, 1), result.stopTimer())
         #
         if run_query_stream(conn, query_root, stream, num_streams, result, verbose):
             return 1
@@ -526,12 +531,12 @@ def run_power_test(query_root, data_dir, host, port, db_name, user, password,
         if not read_only:
             if refresh_func2(conn, data_dir, stream, num_streams, verbose):
                 return 1
-        result.setMetric("refresh_stream_%s_func_2" % stream, result.stopTimer())
+        result.setMetric(REFRESH_METRIC % (stream, 2), result.stopTimer())
         #
         print("Power test finished.")
         if verbose:
             result.printMetrics()
-        result.saveMetrics("power")
+        result.saveMetrics(run_timestamp, "power")
     except Exception as e:
         print("unable to run power test. DB connection failed: %s" % e)
         return 1
@@ -552,7 +557,7 @@ def run_throughput_inner(query_root, data_dir, host, port, db_name, user, passwo
 
 
 def run_throughput_test(query_root, data_dir, host, port, db_name, user, password,
-                        num_streams, verbose, read_only):
+                        run_timestamp, num_streams, verbose, read_only):
     try:
         print("Throughput test started ...")
         conn = PGDB(host, port, db_name, user, password)
@@ -577,13 +582,13 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
             if not read_only:
                 if refresh_func1(conn, data_dir, stream, num_streams, verbose):
                     return 1
-            result.setMetric("refresh_stream_%s_func_1" % stream, result.stopTimer())
+            result.setMetric(REFRESH_METRIC % (stream, 1), result.stopTimer())
             #
             result.startTimer()
             if not read_only:
                 if refresh_func2(conn, data_dir, stream, num_streams, verbose):
                     return 1
-            result.setMetric("refresh_stream_%s_func_2" % stream, result.stopTimer())
+            result.setMetric(REFRESH_METRIC % (stream, 2), result.stopTimer())
             #
         q.put(result)
         for p in processes:
@@ -593,12 +598,12 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
             res = q.get(False)
             if verbose:
                 res.printMetrics()
-            res.saveMetrics("throughput")
+            res.saveMetrics(run_timestamp, THROUGHPUT)
         #
-        total.setMetric("throughput_test_total", total.stopTimer())
+        total.setMetric(THROUGHPUT_TOTAL_METRIC, total.stopTimer())
         if verbose:
             total.printMetrics()
-        total.saveMetrics("throughput")
+        total.saveMetrics(run_timestamp, THROUGHPUT)
         #
     except Exception as e:
         print("unable to execute throughput test: %s" % e)
@@ -638,31 +643,32 @@ def scale_to_num_streams(scale):
 
 def get_json_files_from(path):
     json_files = [pos_json for pos_json in os.listdir(path) if pos_json.endswith('.json')]
-    json_files = [path + s for s in json_files]
+    json_files = [os.path.join(path , s) for s in json_files]
     return json_files
 
 
 def get_json_files(path):
     json_files = []
-    for mode in ['power', 'throughput']:
-        json_files += get_json_files_from(path + "/" + mode + "/")
+    for run_timestamp in os.listdir(os.path.join(path)):
+        for mode in [POWER, THROUGHPUT]:
+            json_files += get_json_files_from(os.path.join(path, run_timestamp, mode))
     return json_files
 
 
-def load_result_jsons():
-    jsons = dict()
+def load_results():
+    results = []
     for json_filename in get_json_files(RESULTS_DIR):
         with open(json_filename, 'r') as json_file:
             raw = json_file.read()
             js = json.loads(raw)
-            jsons = {**jsons, **js} # merge two dicts
-    return jsons
+            for key, value in js.items():
+                results.append({"key": key, "value": value})
+    return results
 
 
-def get_timedelta_in_seconds(jsons, metric_name):
-    time_interval = jsons[metric_name]
-    (hours,minutes,sf) = time_interval.split(":")
-    (seconds,fraction) = sf.split(".")
+def get_timedelta_in_seconds(time_interval):
+    (hours, minutes, sf) = time_interval.split(":")
+    (seconds, fraction) = sf.split(".")
     secs = int(hours) * 60 * 60 + \
            int(minutes) * 60 + \
            int(seconds) + \
@@ -670,62 +676,68 @@ def get_timedelta_in_seconds(jsons, metric_name):
     return secs
 
 
-def qi(jsons, i, s): # execution time for query Qi within the query stream s
+def get_average(results, metric_name):
+    values = [js["value"] for js in results if js["key"] == metric_name]
+    seconds = [get_timedelta_in_seconds(value) for value in values]
+    avg = sum(seconds) / len(values)
+    return avg
+
+def qi(results, i, s): # execution time for query Qi within the query stream s
     # i is the ordering number of the query ranging from 1 to 22
     # s is 0 for the power function and the position of the query stream for the throughput test
     assert(1 <= i <= 22)
     assert(0 <= s)
-    metric_name = 'query_stream_%s_query_%s'
-    ret = get_timedelta_in_seconds(jsons, metric_name % (s, i))
+    metric_name = QUERY_METRIC % (s, i)
+    ret = get_average(results, metric_name)
     return ret
 
 
-def ri(jsons, j, s): # execution time for the refresh function RFi within a refresh stream s
+def ri(results, j, s): # execution time for the refresh function RFi within a refresh stream s
     # j is the ordering function of the refresh function ranging from 1 to 2
     # s is 0 for the power function and the position of the pair of refresh functions in the stream for the throughput test
     assert(j == 1 or j == 2)
     assert(0 <= s)
-    metric_name = 'refresh_stream_%s_func_%s'
-    ret = get_timedelta_in_seconds(jsons, metric_name % (s, j))
+    metric_name = REFRESH_METRIC % (s, j)
+    ret = get_average(results, metric_name)
     return ret
 
 
-def ts(jsons): # total time needed to execute the throughput test
-    # TODO: total time for throughput tests needs to be implemented
-    metric_name = 'throughput_test_total'
-    ret = get_timedelta_in_seconds(jsons, metric_name)
+def ts(results): # total time needed to execute the throughput test
+    metric_name = THROUGHPUT_TOTAL_METRIC
+    ret = get_average(results, metric_name)
     return ret
 
-def get_power_size(jsons, scale, num_streams):
+
+def get_power_size(results, scale, num_streams):
     qi_product = 1
     for i in range(1, NUM_QUERIES + 1):
-        qi_product *= qi(jsons, i, 0)
+        qi_product *= qi(results, i, 0)
     ri_product = 1
     for j in [1, 2]: # two refresh functions
-        ri_product *= ri(jsons, j, 0)
+        ri_product *= ri(results, j, 0)
     denominator = math.pow(qi_product * ri_product, 1/24)
     power_size = (3600 / denominator) * scale
-    print("Power@Size = %s" % power_size)
     return power_size
 
 
-def get_throughput_size(jsons, scale, num_streams):
-    throughput_size = ( ( num_streams * NUM_QUERIES ) / ts(jsons) ) * 3600 * scale
-    print("Throughput@Size = %s" % throughput_size)
+def get_throughput_size(results, scale, num_streams):
+    throughput_size = ( ( num_streams * NUM_QUERIES ) / ts(results) ) * 3600 * scale
     return throughput_size
 
 
 def get_qphh_size(power_size, throughput_size):
     qphh_size = math.sqrt(power_size * throughput_size)
-    print("QphH@Size = %s" % qphh_size)
     return qphh_size
 
 
-def metrics(scale,num_streams):
-    jsons = load_result_jsons()
-    power_size = get_power_size(jsons,scale,num_streams)
-    throughput_size = get_throughput_size(jsons,scale,num_streams)
+def metrics(scale, num_streams):
+    results = load_results()
+    power_size = get_power_size(results, scale, num_streams)
+    print("Power@Size = %s" % power_size)
+    throughput_size = get_throughput_size(results, scale, num_streams)
+    print("Throughput@Size = %s" % throughput_size)
     qphh_size = get_qphh_size(power_size, throughput_size)
+    print("QphH@Size = %s" % qphh_size)
 
 
 def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
@@ -773,13 +785,14 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         print("done creating indexes and foreign keys")
         result.printMetrics()
     elif phase == "query":
+        run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
         if run_power_test(query_root, data_dir, host, port, database, user, password,
-                          num_streams, verbose, read_only):
+                          run_timestamp, num_streams, verbose, read_only):
             print("running power test failed")
             exit(1)
         # Throughput test
         if run_throughput_test(query_root, data_dir, host, port, database, user, password,
-                               num_streams, verbose, read_only):
+                               run_timestamp, num_streams, verbose, read_only):
             print("running throughput test failed")
             exit(1)
         print("done performance test")
@@ -788,35 +801,61 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "PGTPCH")
-    parser.add_argument("phase",  help = "Phase of PGTPCH to run.", choices = ["prepare", "load", "query"])
-    parser.add_argument("-a", "--host", default = "localhost", help = "Address of host on which PostgreSQL instance runs; default is localhost")
-    parser.add_argument("-p", "--port", type = int, default = 5432, help = "Port on which PostgreSQL instance runs; default is 5432")
-    parser.add_argument("-u", "--user", default = "postgres", help = "User for the PostgreSQL instance; default is postgres")
-    parser.add_argument("-v", "--password", nargs = '?', default = "test123", action = Password, help = "Password for the PostgreSQL instance; default is test123")
-    parser.add_argument("-d", "--database", default = "tpch", help = "Name of the database; default is tpch")
-    parser.add_argument("-i", "--data-dir", default = "./data", help = "Directory for generated data; default is ./data")
-    parser.add_argument("-q", "--query-root", default = "./query_root", help = "Directory for query files; default is ./query_root")
-    parser.add_argument("-g", "--dbgen-dir", default = "./tpch-dbgen", help = "Directory containing tpch dbgen source; default is ./tpch-dbgen")
-    parser.add_argument("-s", "--scale", type = float, default = 1.0, help = "Size of the data generated; default is 1.0 = 1GB")
-    parser.add_argument("-n", "--num-streams", type = int, default = 0, help = "Number of streams to run the throughput test with; default is 0, i.e. based on scale factor SF")
-    parser.add_argument("-b", "--verbose", help = "Print more information to standard output", action="store_true")
-    parser.add_argument("-r", "--read-only", help = "Do not execute refresh functions during the query phase, which allows for running it repeatedly", action="store_true")
+    default_host = "localhost"
+    default_port = 5432
+    default_username = "postgres"
+    default_password = "test123"
+    default_dbname = "tpch"
+    default_data_dir = os.path.join(".", "data")
+    default_query_root = os.path.join(".", "query_root")
+    default_dbgen_dir = os.path.join(".", "tpch-dbgen")
+    default_scale = 1.0
+    default_num_streams = 0
+
+    parser.add_argument("phase", choices=["prepare", "load", "query"],
+                        help="Phase of PGTPCH to run.")
+    parser.add_argument("-H", "--host", default=default_host,
+                        help="Address of host on which PostgreSQL instance runs; default is %s" % default_host)
+    parser.add_argument("-p", "--port", type=int, default=default_port,
+                        help="Port on which PostgreSQL instance runs; default is %s" % str(default_port))
+    parser.add_argument("-U", "--username", default=default_username,
+                        help="User for the PostgreSQL instance; default is %s" % default_username)
+    parser.add_argument("-W", "--password", nargs='?', default=default_password, action=Password,
+                        help="Password for the PostgreSQL instance; default is %s" % default_password)
+    parser.add_argument("-d", "--dbname", default=default_dbname,
+                        help="Name of the database; default is %s" % default_dbname)
+    parser.add_argument("-i", "--data-dir", default=default_data_dir,
+                        help="Directory for generated data; default is %s" % default_data_dir)
+    parser.add_argument("-q", "--query-root", default=default_query_root,
+                        help="Directory for query files; default is %s" % default_query_root)
+    parser.add_argument("-g", "--dbgen-dir", default=default_dbgen_dir,
+                        help="Directory containing tpch dbgen source; default is %s" % default_dbgen_dir)
+    parser.add_argument("-s", "--scale", type=float, default=default_scale,
+                        help="Size of the data generated, scale factor; default is %s = 1GB" % default_scale)
+    parser.add_argument("-n", "--num-streams", type=int, default=default_num_streams,
+                        help="Number of streams to run the throughput test with; default is %s"  % default_num_streams +
+                             ", i.e. based on scale factor SF")
+    parser.add_argument("-b", "--verbose", action="store_true",
+                        help="Print more information to standard output")
+    parser.add_argument("-r", "--read-only", action="store_true",
+                        help="Do not execute refresh functions during the query phase, which allows for running it repeatedly")
     args = parser.parse_args()
 
     ## Extract all arguments into variables
     phase = args.phase
     host = args.host
     port = args.port
-    database = args.database
+    database = args.dbname
     data_dir = args.data_dir
     query_root = args.query_root
     dbgen_dir = args.dbgen_dir
     scale = args.scale
     num_streams = args.num_streams
-    user = args.user
+    user = args.username
     password = args.password
     verbose = args.verbose
     read_only = args.read_only
 
     ## main
     main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir, scale, num_streams, verbose, read_only)
+
