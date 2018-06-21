@@ -6,6 +6,7 @@ import os
 SCALE_FACTOR = 2  # because we use 0.01 as scale in travis ci build
 query_nr_range = range(1, SCALE_FACTOR+1)
 
+
 class TestPrepareAfter(unittest.TestCase):
 
     def check_dir(self, path):
