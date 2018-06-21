@@ -36,11 +36,13 @@ script:
 
   - ./benchmark.py --help
 
-  - export PYTHONPATH=$(pwd) && echo $PYTHONPATH && cd test/ && python -m unittest test_benchmark.py --verbose && cd ..
+  - export PYTHONPATH=$(pwd)
+  - echo $PYTHONPATH
+  - $(cd test/ && python -m unittest test_benchmark.py --verbose && cd ..)
 
-  - export PYTHONPATH=$(pwd) && echo $PYTHONPATH && cd test/ && python -m unittest test_prepare_before.py --verbose && cd ..
+  - $(cd test/ && python -m unittest test_prepare_before.py --verbose && cd ..)
   - ./benchmark.py --scale 0.01 prepare
-  - export PYTHONPATH=$(pwd) && echo $PYTHONPATH && cd test/ && python -m unittest test_prepare_after.py --verbose && cd ..
+  - $(cd test/ && python -m unittest test_prepare_after.py --verbose && cd ..)
 
   - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD load
 
