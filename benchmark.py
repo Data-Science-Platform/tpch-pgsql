@@ -785,7 +785,6 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         print("done creating indexes and foreign keys")
         result.printMetrics()
     elif phase == "query":
-        """
         run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
         if run_power_test(query_root, data_dir, host, port, database, user, password,
                           run_timestamp, num_streams, verbose, read_only):
@@ -797,7 +796,6 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
             print("running throughput test failed")
             exit(1)
         print("done performance test")
-        """
         metrics(scale, num_streams)
 
 
