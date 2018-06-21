@@ -239,7 +239,7 @@ def generate_data(dbgen_dir, data_dir, scale, num_streams):
     Return:
         0 if successful non zero otherwise
     """
-    p = subprocess.Popen(["./dbgen", "-vf", "-s", str(scale)], cwd = dbgen_dir)
+    p = subprocess.Popen([os.path.join(".", "dbgen"), "-vf", "-s", str(scale)], cwd = dbgen_dir)
     p.communicate()
     if (not p.returncode):
         load_dir = os.path.join(data_dir, LOAD_DIR)
@@ -252,7 +252,7 @@ def generate_data(dbgen_dir, data_dir, scale, num_streams):
 
     ## Update/Delete phase data
     ## we generate num_streams + 1 number of updates because 1 is used by the power test
-    p = subprocess.Popen(["./dbgen", "-vf", "-s", str(scale), "-U", str(num_streams + 1)],
+    p = subprocess.Popen([os.path.join(".", "dbgen"), "-vf", "-s", str(scale), "-U", str(num_streams + 1)],
                          cwd = dbgen_dir)
     p.communicate()
     if (not p.returncode):
@@ -292,7 +292,7 @@ def generate_queries(dbgen_dir, query_root):
     for i in range(1, 23):
         try:
             with open(os.path.join(query_gen_dir, str(i) + ".sql"), "w") as out_file:
-                p = subprocess.Popen(["./qgen", str(i)], cwd = dbgen_dir,
+                p = subprocess.Popen([os.path.join(".", "qgen"), str(i)], cwd = dbgen_dir,
                                         env = query_env, stdout = out_file)
                 p.communicate()
                 if p.returncode:
@@ -808,9 +808,9 @@ if __name__ == "__main__":
     default_username = "postgres"
     default_password = "test123"
     default_dbname = "tpch"
-    default_data_dir = "./data"
-    default_query_root = "./query_root"
-    default_dbgen_dir = "./tpch-dbgen"
+    default_data_dir = os.path.join(".", "data")
+    default_query_root = os.path.join(".", "query_root")
+    default_dbgen_dir = os.path.join(".", "tpch-dbgen")
     default_scale = 1.0
     default_num_streams = 0
 
