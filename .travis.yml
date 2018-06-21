@@ -32,10 +32,43 @@ before_script:
   - psql --command="GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;" -U postgres
 
 script:
-  - ./benchmark.py || true # ignore exit code 2 from the command
+  - ./benchmark.py || export EXIT_CODE=$? && echo $EXIT_CODE && if [ "$EXIT_CODE" == "42" ]; then true; else false; fi
+
   - ./benchmark.py --help
+
   - export PYTHONPATH=$(pwd) && echo $PYTHONPATH && cd test/ && python -m unittest test_benchmark.py --verbose && cd ..
+
   - ./benchmark.py --scale 0.01 prepare
+  - if [ ! -d data/ ]; then false; fi
+  - if [ ! -d data/delete/ ]; then false; fi
+  - if [ ! -d data/load/ ]; then false; fi
+  - if [ ! -d data/update/ ]; then false; fi
+  - |
+    ret=0; \
+    for d in load delete update; do if [ ! -d data/${d}/ ]; then ret=$(expr $ret + 1); fi; done; \
+    if [ $ret -eq 0 ]; then true; else false; fi
+  - |
+    ret=0; \
+    for f in customer lineitem nation orders part partsupp region supplier; \
+    do if [ ! -f data/load/${f}.tbl.csv ]; then echo data/load/${f}.tbl.csv; ret=$(expr $ret + 1); fi; done; \
+    if [ $ret -eq 0 ]; then true; else false; fi
+  - ret=0; \
+    for i in 1 2; do if [ ! -f data/delete/delete.${i}.csv ];
+    then echo data/delete/delete.${i}.csv; ret=$(expr $ret + 1); fi; done; \
+    if [ $ret -eq 0 ]; then true; else false; fi
+  - ret=0; \
+    for table in lineitem orders; do
+    for i in 1 2; do if [ ! -f data/update/${table}.tbl.u${i}.csv ];
+    then echo data/update/${table}.tbl.u${i}.csv; ret=$(expr $ret + 1); fi; done; done; \
+    if [ $ret -eq 0 ]; then true; else false; fi
+  - if [ ! -d query_root/ ]; then false; fi
+  - if [ ! -d query_root/perf_query_gen/ ]; then false; fi
+  - |
+    ret=0; \
+    for i in $(seq 1 22); do if [ ! -f query_root/perf_query_gen/${i}.sql ]; then ret=$(expr $ret + 1); fi; done; \
+    if [ $ret -eq 0 ]; then true; else false; fi
+
   - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD load
+
   - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD query
 
