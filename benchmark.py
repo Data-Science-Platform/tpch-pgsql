@@ -708,20 +708,20 @@ def ts(results): # total time needed to execute the throughput test
     return ret
 
 
-def get_power_size(jsons, scale, num_streams):
+def get_power_size(results, scale, num_streams):
     qi_product = 1
     for i in range(1, NUM_QUERIES + 1):
-        qi_product *= qi(jsons, i, 0)
+        qi_product *= qi(results, i, 0)
     ri_product = 1
     for j in [1, 2]: # two refresh functions
-        ri_product *= ri(jsons, j, 0)
+        ri_product *= ri(results, j, 0)
     denominator = math.pow(qi_product * ri_product, 1/24)
     power_size = (3600 / denominator) * scale
     return power_size
 
 
-def get_throughput_size(jsons, scale, num_streams):
-    throughput_size = ( ( num_streams * NUM_QUERIES ) / ts(jsons) ) * 3600 * scale
+def get_throughput_size(results, scale, num_streams):
+    throughput_size = ( ( num_streams * NUM_QUERIES ) / ts(results) ) * 3600 * scale
     return throughput_size
 
 
