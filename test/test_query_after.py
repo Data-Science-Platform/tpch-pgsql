@@ -33,9 +33,12 @@ class TestLoadAfter(unittest.TestCase):
             count = cursor.fetchall()
             row_counts = {"customer": 1500, "lineitem": 60176, "nation": 25, "orders": 15000,
                           "part": 2000, "partsupp": 8000, "region": 5, "supplier": 100}
-            self.assertTrue(len(count) == 1 and count[0][0] != 0, "Table %s is empty!" % table)
-            self.assertTrue(len(count) == 1 and count[0][0] == row_counts[table],
-                            "Table %s does not contain expected number of rows %s!" % (table, row_counts[table]))
+            expected_rows = row_counts[table]
+            actual_rows = count[0][0]
+            self.assertTrue(len(count) == 1 and actual_rows != 0, "Table %s is empty!" % table)
+            self.assertTrue(len(count) == 1 and actual_rows == expected_rows,
+                            "Table %s does not contain expected number of rows! "
+                            "(expected=%s vs actual=%s)" % (table, expected_rows, actual_rows))
 
     def check_dir(self, path):
         self.assertTrue(os.path.exists(path), "Folder %s does not exist!" % path)
