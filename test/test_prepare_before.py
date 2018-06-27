@@ -11,7 +11,7 @@ class TestPrepareBefore(unittest.TestCase, TestCommon):
         folders = ["data", "results", os.path.join("query_root", "perf_query_gen")]
         for folder in folders:
             path = os.path.join(self.ROOT_DIR, folder)
-            self.assertFalse(os.path.exists(path), "Folder %s already exists!" % path)
+            self.check_dir_not_exist(path)
 
 
 if __name__ == '__main__':
