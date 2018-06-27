@@ -35,7 +35,7 @@ class TestCommon(object):
         self.assertTrue(os.path.exists(path), "Folder %s does not exist!" % path)
         self.assertTrue(os.path.isdir(path), "Path %s is not a directory!" % path)
 
-    def check_dir_no_exist(self, path):
+    def check_dir_not_exist(self, path):
         self.assertFalse(os.path.exists(path), "Folder %s already exists!" % path)
 
     def check_file(self, filename, check_if_not_empty=False):
