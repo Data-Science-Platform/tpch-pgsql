@@ -45,6 +45,7 @@ script:
   - $(cd test/ && python -m unittest test_prepare_after.py --verbose && cd ..)
 
   - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD load
-  - $(cd test/ && python -m unittest test_query_after.py --verbose && cd ..)
+  - $(cd test/ && python -m unittest test_load_after.py --verbose && cd ..)
 
   - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD query
+  - $(cd test/ && python -m unittest test_query_after.py --verbose && cd ..)

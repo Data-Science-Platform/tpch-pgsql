@@ -612,7 +612,7 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
 
 def niceprint(txt, width):
     w = round((width - len(txt) - 2) / 2)
-    x = len(txt)%2 # extra space if needed
+    x = len(txt) % 2  # extra space if needed
     print("*"*w + " " + txt + " " + " "*x + "*"*w)
     
 
