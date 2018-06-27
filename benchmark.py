@@ -654,7 +654,9 @@ def get_json_files(path):
     json_files = []
     for run_timestamp in os.listdir(os.path.join(path)):
         for mode in [POWER, THROUGHPUT]:
-            json_files += get_json_files_from(os.path.join(path, run_timestamp, mode))
+            sub_dir = os.path.join(path, run_timestamp, mode)
+            if os.path.exists(sub_dir) and os.path.isdir(sub_dir):
+                json_files += get_json_files_from(sub_dir)
     return json_files
 
 
@@ -749,6 +751,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
          scale, num_streams, verbose, read_only):
     if num_streams == 0:
         num_streams = scale_to_num_streams(scale)
+    run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     if phase == "prepare":
         ## try to build dbgen from source and quit if failed
         if build_dbgen(dbgen_dir):
@@ -789,8 +792,8 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         result.setMetric("index_tables", result.stopTimer())
         print("done creating indexes and foreign keys")
         result.printMetrics()
+        result.saveMetrics(run_timestamp, "load")
     elif phase == "query":
-        run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
         if run_power_test(query_root, data_dir, host, port, database, user, password,
                           run_timestamp, num_streams, verbose, read_only):
             print("running power test failed")
