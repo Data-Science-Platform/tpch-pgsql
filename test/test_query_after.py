@@ -10,6 +10,7 @@ port = 5432
 dbname = "tpchdb"
 username = "tpch"
 password = "hello123"
+NUM_STREAMS = 2  # because we use scale factor 0.01
 
 
 class TestLoadAfter(unittest.TestCase):
@@ -37,33 +38,35 @@ class TestLoadAfter(unittest.TestCase):
                             "Table %s does not contain expected number of rows %s!" % (table, row_counts[table]))
 
     def check_dir(self, path):
-        print(path)
         self.assertTrue(os.path.exists(path), "Folder %s does not exist!" % path)
         self.assertTrue(os.path.isdir(path), "Path %s is not a directory!" % path)
 
-    def check_file(self, filename):
-        print(filename)
+    def check_file(self, filename, check_if_not_empty=False):
         self.assertTrue(os.path.exists(filename), "File %s does not exist!" % filename)
         self.assertTrue(os.path.isfile(filename), "Path %s is not a file!" % filename)
+        if check_if_not_empty:
+            self.assertTrue(os.stat(filename).st_size > 0, "Path %s is empty!" % filename)
 
     def test_results(self):
         root_dir = ".."  # parent of results/
         results_dir = os.path.join(root_dir, "results")
         self.check_dir(results_dir)
-        for run_dir in glob.glob(os.path.join(results_dir,'*')):
+        for run_dir in glob.glob(os.path.join(results_dir, '*')):
             power_dir = os.path.join(run_dir, "power")
             self.check_dir(power_dir)
             power_file = os.path.join(power_dir, "Power.json")
-            self.check_file(power_file)
+            self.check_file(power_file, check_if_not_empty=True)
             throughput_dir = os.path.join(run_dir, "throughput")
             self.check_dir(throughput_dir)
-            for f in ['QueryStream', 'RefreshStream', 'Total']:
-                if f == 'QueryStream':
-                    for i in [1, 2]:
-                        throughput_file = os.path.join(throughput_dir, "Throughput%s%i.json" % (f, i))
-                else:
-                    throughput_file = os.path.join(throughput_dir, "Throughput%s.json" % f)
-                self.check_file(throughput_file)
+            files = []
+            for i in range(1, NUM_STREAMS + 1):
+                throughput_file = os.path.join(throughput_dir, "Throughput%s%i.json" % ('QueryStream', i))
+                files.append(throughput_file)
+            for f in ['RefreshStream', 'Total']:
+                throughput_file = os.path.join(throughput_dir, "Throughput%s.json" % f)
+                files.append(throughput_file)
+            for f in files:
+                self.check_file(f, check_if_not_empty=True)
 
 
 if __name__ == '__main__':
