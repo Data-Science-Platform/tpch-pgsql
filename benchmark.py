@@ -101,25 +101,31 @@ class Result:
     def setMetric(self, name, value):
         self.__metrics__[name] = value
 
+    def printPadded(self, txt, width, fill='='):
+        space = ' '
+        w = int((width - len(txt) - 2 * len(space)) / 2)
+        x = len(txt) % 2  # extra fill char if needed
+        print(fill * w + space + txt + space + fill * x + fill * w)
+
     def printResultHeader(self, title):
         title = self.__title__ if not title else title
-        print("========================================")
-        l = int((40 - len(title))/2)
-        print(("="*l) + title + ("="*(l+1 if l%2 else l)))
-        print("========================================")
+        width = 60
+        print("="*width)
+        self.printPadded(title, width)
+        print("="*width)
 
     def printResultFooter(self):
         self.printResultHeader("End Results")
 
-    def printMetrics(self, title = None):
+    def printMetrics(self, title=None):
         self.printResultHeader(title)
         for key, value in self.__metrics__.items():
-            print("Time taken for %s: %s" % (key, value))
+            print("%s: %s" % (key, value))
         self.printResultFooter()
 
     def saveMetrics(self, run_timestamp, folder):
         path = os.path.join(RESULTS_DIR, run_timestamp, folder)
-        os.makedirs(path, exist_ok = True)
+        os.makedirs(path, exist_ok=True)
         metrics = dict()
         for key, value in self.__metrics__.items():
             metrics[key] = str(value)
@@ -613,12 +619,6 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
         return 1
 
 
-def niceprint(txt, width):
-    w = round((width - len(txt) - 2) / 2)
-    x = len(txt) % 2  # extra space if needed
-    print("*"*w + " " + txt + " " + " "*x + "*"*w)
-    
-
 def scale_to_num_streams(scale):
     num_streams = 2
     if scale <= 1:
@@ -737,14 +737,25 @@ def get_qphh_size(power_size, throughput_size):
     return qphh_size
 
 
-def metrics(scale_factor, num_streams):
+def calc_metrics(run_timestamp, scale_factor, num_streams):
     results = load_results()
+    r = Result("Metric")
+    #
     power_size = get_power_size(results, scale_factor)
+    r.setMetric("power_size", power_size)
     print("Power@Size = %s" % power_size)
+    #
     throughput_size = get_throughput_size(results, scale_factor, num_streams)
+    r.setMetric("throughput_size", throughput_size)
     print("Throughput@Size = %s" % throughput_size)
+    #
     qphh_size = get_qphh_size(power_size, throughput_size)
+    r.setMetric("qphh_size", qphh_size)
     print("QphH@Size = %s" % qphh_size)
+    #
+    r.printMetrics("Metrics")
+    r.saveMetrics(run_timestamp, "metrics")
+
 
 
 def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
@@ -804,7 +815,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
             print("running throughput test failed")
             exit(1)
         print("done performance test")
-        metrics(scale, num_streams)
+        calc_metrics(run_timestamp, scale, num_streams)
 
 
 if __name__ == "__main__":
