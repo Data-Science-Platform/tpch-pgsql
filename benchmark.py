@@ -779,7 +779,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
             exit(1)
         print("created query files in %s" % query_root)
     elif phase == "load":
-        result = Result("Load Results")
+        result = Result("Load")
         if clean_database(query_root, host, port, database, user, password):
             print("could not clean the database.")
             exit(1)
