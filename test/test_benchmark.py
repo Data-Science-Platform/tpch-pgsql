@@ -67,16 +67,35 @@ class TestBenchmark(unittest.TestCase):
         self.assertEqual(expected, files,
                          "Some json files were not found, others were included, but are not json files!")
 
+    @staticmethod
+    def mock_path_isdir_side_effect(arg):
+        basename = os.path.basename(arg)
+        if basename in ('power', 'throughput'):
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def mock_path_exists_side_effect(arg):
+        return True
+
     @mock.patch('benchmark.os.listdir')
     def test_get_json_files(self, mock_listdir):
-        mock_listdir.side_effect = [['a', 'b', 'c'],
-                                    ['a1.json'], ['a2x.json', 'a2y.json'],
-                                    [], [],
+        mock_listdir.side_effect = [['run1', 'run2', 'run3', 'run4'],
+                                    ['power1.json'], ['throughput1a.json', 'throughput1b.json'],
+                                    ['power2.json', 'power2.txt'], ['throughput2.json'],
+                                    ['power3a.txt'], ['throughput.txt'],
                                     [], []]
+        mock_isdir = mock.patch('os.path.isdir').start()
+        mock_isdir.side_effect = self.mock_path_isdir_side_effect
+        mock_exists = mock.patch('os.path.exists').start()
+        mock_exists.side_effect = self.mock_path_exists_side_effect
         root_dir = 'dummy'
-        expected = [os.path.join('dummy', 'a', 'power', 'a1.json'),
-                    os.path.join('dummy', 'a', 'throughput', 'a2x.json'),
-                    os.path.join('dummy', 'a', 'throughput', 'a2y.json')]
+        expected = [os.path.join('dummy', 'run1', 'power', 'power1.json'),
+                    os.path.join('dummy', 'run1', 'throughput', 'throughput1a.json'),
+                    os.path.join('dummy', 'run1', 'throughput', 'throughput1b.json'),
+                    os.path.join('dummy', 'run2', 'power', 'power2.json'),
+                    os.path.join('dummy', 'run2', 'throughput', 'throughput2.json')]
         files = bm.get_json_files(root_dir)
         self.assertEqual(expected, files,
                          "Some json files were not found, others were included, but are not json files!")

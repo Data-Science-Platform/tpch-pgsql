@@ -8,8 +8,6 @@ import time
 import math
 import subprocess
 import re
-import shutil
-from tempfile import mkstemp
 from datetime import datetime
 import glob
 import getpass
@@ -30,7 +28,7 @@ THROUGHPUT = "throughput"
 QUERY_METRIC = "query_stream_%s_query_%s"
 REFRESH_METRIC = "refresh_stream_%s_func_%s"
 THROUGHPUT_TOTAL_METRIC = "throughput_test_total"
-QUERY_ORDER = [ # As given in appendix A of the TPCH-specification
+QUERY_ORDER = [  # As given in appendix A of the TPCH-specification
         [14, 2, 9, 20, 6, 17, 18, 8, 21, 13, 3, 22, 16, 4, 11, 15, 1, 10, 19, 5, 7, 12],
         [21, 3, 18, 5, 11, 7, 6, 20, 17, 12, 16, 15, 13, 10, 2, 8, 14, 19, 9, 22, 1, 4],
         [6, 17, 14, 16, 19, 10, 9, 2, 15, 8, 5, 22, 12, 7, 13, 18, 1, 4, 20, 3, 11, 21],
@@ -74,7 +72,6 @@ QUERY_ORDER = [ # As given in appendix A of the TPCH-specification
         [13, 15, 17, 1, 22, 11, 3, 4, 7, 20, 14, 21, 9, 8, 2, 18, 16, 6, 10, 12, 5, 19]
         ]
 NUM_QUERIES = len(QUERY_ORDER[0]) # 22
-
 ## End Constants
 
 
@@ -104,25 +101,31 @@ class Result:
     def setMetric(self, name, value):
         self.__metrics__[name] = value
 
+    def printPadded(self, txt, width, fill='='):
+        space = ' '
+        w = int((width - len(txt) - 2 * len(space)) / 2)
+        x = len(txt) % 2  # extra fill char if needed
+        print(fill * w + space + txt + space + fill * x + fill * w)
+
     def printResultHeader(self, title):
         title = self.__title__ if not title else title
-        print("========================================")
-        l = int((40 - len(title))/2)
-        print(("="*l) + title + ("="*(l+1 if l%2 else l)))
-        print("========================================")
+        width = 60
+        print("="*width)
+        self.printPadded(title, width)
+        print("="*width)
 
     def printResultFooter(self):
         self.printResultHeader("End Results")
 
-    def printMetrics(self, title = None):
+    def printMetrics(self, title=None):
         self.printResultHeader(title)
         for key, value in self.__metrics__.items():
-            print("Time taken for %s: %s" % (key, value))
+            print("%s: %s" % (key, value))
         self.printResultFooter()
 
     def saveMetrics(self, run_timestamp, folder):
         path = os.path.join(RESULTS_DIR, run_timestamp, folder)
-        os.makedirs(path, exist_ok = True)
+        os.makedirs(path, exist_ok=True)
         metrics = dict()
         for key, value in self.__metrics__.items():
             metrics[key] = str(value)
@@ -131,10 +134,10 @@ class Result:
 
 
 class Password(argparse.Action):
-     def __call__(self, parser, namespace, values, option_string):
-         if values is None:
-             values = getpass.getpass()
-         setattr(namespace, self.dest, values)
+    def __call__(self, parser, namespace, values, option_string):
+        if values is None:
+            values = getpass.getpass()
+        setattr(namespace, self.dest, values)
 
 
 class PGDB:
@@ -143,7 +146,8 @@ class PGDB:
     
     def __init__(self, host, port, db_name, user, password):
         # Exception handling is done by the method using this.
-        self.__connection__ = psycopg2.connect("host='%s' port='%s' dbname='%s' user='%s' password='%s'" % (host, port, db_name, user, password))
+        self.__connection__ = psycopg2.connect("host='%s' port='%s' dbname='%s' user='%s' password='%s'" %
+                                               (host, port, db_name, user, password))
         self.__cursor__ = self.__connection__.cursor()
 
     def close(self):
@@ -173,7 +177,7 @@ class PGDB:
     def copyFrom(self, filepath, separator, table):
         if self.__cursor__ is not None:
             with open(filepath, 'r') as in_file:
-                self.__cursor__.copy_from(in_file, table = table, sep = separator)
+                self.__cursor__.copy_from(in_file, table=table, sep=separator)
             return 0
         else:
             print("database has been closed")
@@ -206,9 +210,10 @@ def build_dbgen(dbgen_dir):
     p.communicate()
     return p.returncode
 
+
 def inner_generate_data(data_dir, dbgen_dir, file_pattern, out_ext):
     try:
-        os.makedirs(data_dir, exist_ok = True)
+        os.makedirs(data_dir, exist_ok=True)
         for in_fname in glob.glob(os.path.join(dbgen_dir, file_pattern)):
             fname = os.path.basename(in_fname)
             out_fname = os.path.join(data_dir, fname + out_ext)
@@ -227,6 +232,7 @@ def inner_generate_data(data_dir, dbgen_dir, file_pattern, out_ext):
     ## All files written successfully. Return success code.
     return 0
 
+
 def generate_data(dbgen_dir, data_dir, scale, num_streams):
     """Generates data for the loading into tables.
 
@@ -241,7 +247,7 @@ def generate_data(dbgen_dir, data_dir, scale, num_streams):
     """
     p = subprocess.Popen([os.path.join(".", "dbgen"), "-vf", "-s", str(scale)], cwd = dbgen_dir)
     p.communicate()
-    if (not p.returncode):
+    if not p.returncode:
         load_dir = os.path.join(data_dir, LOAD_DIR)
         if inner_generate_data(load_dir, dbgen_dir, "*.tbl", ".csv"):
             print("unable to generate data for load phase")
@@ -255,7 +261,7 @@ def generate_data(dbgen_dir, data_dir, scale, num_streams):
     p = subprocess.Popen([os.path.join(".", "dbgen"), "-vf", "-s", str(scale), "-U", str(num_streams + 1)],
                          cwd = dbgen_dir)
     p.communicate()
-    if (not p.returncode):
+    if not p.returncode:
         update_dir = os.path.join(data_dir, UPDATE_DIR)
         delete_dir = os.path.join(data_dir, DELETE_DIR)
         if inner_generate_data(update_dir, dbgen_dir, "*.tbl.u*", ".csv"):
@@ -288,12 +294,12 @@ def generate_queries(dbgen_dir, query_root):
     query_env = os.environ.copy()
     query_env['DSS_QUERY'] = dss_query
     query_gen_dir = os.path.join(query_root, GENERATED_QUERY_DIR)
-    os.makedirs(query_gen_dir, exist_ok = True)
+    os.makedirs(query_gen_dir, exist_ok=True)
     for i in range(1, 23):
         try:
             with open(os.path.join(query_gen_dir, str(i) + ".sql"), "w") as out_file:
-                p = subprocess.Popen([os.path.join(".", "qgen"), str(i)], cwd = dbgen_dir,
-                                        env = query_env, stdout = out_file)
+                p = subprocess.Popen([os.path.join(".", "qgen"), str(i)],
+                                     cwd=dbgen_dir, env=query_env, stdout=out_file)
                 p.communicate()
                 if p.returncode:
                     print("Process returned non zero when generating query number %s" % i)
@@ -302,6 +308,7 @@ def generate_queries(dbgen_dir, query_root):
             print("IO Error during query generation %s" % e)
             return 1
     return p.returncode
+
 
 def clean_database(query_root, host, port, db_name, user, password):
     """Drops the tables if they exist
@@ -353,7 +360,7 @@ def create_schema(query_root, host, port, db_name, user, password):
         try:
             conn.executeQueryFromFile(os.path.join(query_root, PREP_QUERY_DIR, "create_tbl.sql"))
         except Exception as e:
-            print("unable to run create tables. %s" %e)
+            print("unable to run create tables. %s" % e)
             return 1
         conn.commit()
         conn.close()
@@ -382,7 +389,7 @@ def load_tables(query_root, data_dir, host, port, db_name, user, password):
         try:
             for table in TABLES:
                 filepath = os.path.join(data_dir, LOAD_DIR, table.lower() + ".tbl.csv")
-                conn.copyFrom(filepath, separator = "|", table = table)
+                conn.copyFrom(filepath, separator="|", table=table)
             conn.commit()
         except Exception as e:
             print("unable to run load tables. %s" %e)
@@ -392,6 +399,7 @@ def load_tables(query_root, data_dir, host, port, db_name, user, password):
     except Exception as e:
         print("unable to connect to the database. %s" % e)
         return 1
+
 
 def index_tables(query_root, data_dir, host, port, db_name, user, password):
     """Creates indexes and foreign keys for loaded tables.
@@ -414,7 +422,7 @@ def index_tables(query_root, data_dir, host, port, db_name, user, password):
             conn.executeQueryFromFile(os.path.join(query_root, PREP_QUERY_DIR, "create_idx.sql"))
             conn.commit()
         except Exception as e:
-            print("unable to run index tables. %s" %e)
+            print("unable to run index tables. %s" % e)
             return 1
         conn.close()
         return 0
@@ -429,7 +437,8 @@ def grouper(iterable, n, fillvalue=None):
 
 
 def insert_lineitem(cols, conn):
-    li_insert_stmt = "INSERT INTO LINEITEM VALUES (%s, %s, %s, %s, %s, %s, %s, %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % cols
+    li_insert_stmt = """INSERT INTO LINEITEM VALUES (%s, %s, %s, %s, %s, %s, %s, %s, '%s',
+                     '%s', '%s', '%s', '%s', '%s', '%s', '%s')""" % cols
     conn.executeQuery(li_insert_stmt)
 
 
@@ -472,7 +481,7 @@ def refresh_func1(conn, data_dir, stream, num_streams, verbose):
         conn.commit()
         return 0
     except Exception as e:
-        print("refresh function 1 failed. %s" %e)
+        print("refresh function #1 failed. %s" % e)
         return 1
 
 
@@ -489,7 +498,7 @@ def refresh_func2(conn, data_dir, stream, num_streams, verbose):
         conn.commit()
         return 0
     except Exception as e:
-        print("refresh function 1 failed. %s" %e)
+        print("refresh function #2 failed. %s" % e)
         return 1
 
 
@@ -610,12 +619,6 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
         return 1
 
 
-def niceprint(txt, width):
-    w = round((width - len(txt) - 2) / 2)
-    x = len(txt) % 2  # extra space if needed
-    print("*"*w + " " + txt + " " + " "*x + "*"*w)
-    
-
 def scale_to_num_streams(scale):
     num_streams = 2
     if scale <= 1:
@@ -651,7 +654,9 @@ def get_json_files(path):
     json_files = []
     for run_timestamp in os.listdir(os.path.join(path)):
         for mode in [POWER, THROUGHPUT]:
-            json_files += get_json_files_from(os.path.join(path, run_timestamp, mode))
+            sub_dir = os.path.join(path, run_timestamp, mode)
+            if os.path.exists(sub_dir) and os.path.isdir(sub_dir):
+                json_files += get_json_files_from(sub_dir)
     return json_files
 
 
@@ -682,6 +687,7 @@ def get_average(results, metric_name):
     avg = sum(seconds) / len(values)
     return avg
 
+
 def qi(results, i, s): # execution time for query Qi within the query stream s
     # i is the ordering number of the query ranging from 1 to 22
     # s is 0 for the power function and the position of the query stream for the throughput test
@@ -694,7 +700,8 @@ def qi(results, i, s): # execution time for query Qi within the query stream s
 
 def ri(results, j, s): # execution time for the refresh function RFi within a refresh stream s
     # j is the ordering function of the refresh function ranging from 1 to 2
-    # s is 0 for the power function and the position of the pair of refresh functions in the stream for the throughput test
+    # s is 0 for the power function and the position of the pair of refresh functions
+    # in the stream for the throughput test
     assert(j == 1 or j == 2)
     assert(0 <= s)
     metric_name = REFRESH_METRIC % (s, j)
@@ -702,26 +709,26 @@ def ri(results, j, s): # execution time for the refresh function RFi within a re
     return ret
 
 
-def ts(results): # total time needed to execute the throughput test
+def ts(results):  # total time needed to execute the throughput test
     metric_name = THROUGHPUT_TOTAL_METRIC
     ret = get_average(results, metric_name)
     return ret
 
 
-def get_power_size(results, scale, num_streams):
+def get_power_size(results, scale_factor):
     qi_product = 1
     for i in range(1, NUM_QUERIES + 1):
         qi_product *= qi(results, i, 0)
     ri_product = 1
-    for j in [1, 2]: # two refresh functions
+    for j in [1, 2]:  # two refresh functions
         ri_product *= ri(results, j, 0)
     denominator = math.pow(qi_product * ri_product, 1/24)
-    power_size = (3600 / denominator) * scale
+    power_size = (3600 / denominator) * scale_factor
     return power_size
 
 
-def get_throughput_size(results, scale, num_streams):
-    throughput_size = ( ( num_streams * NUM_QUERIES ) / ts(results) ) * 3600 * scale
+def get_throughput_size(results, scale_factor, num_streams):
+    throughput_size = ((num_streams * NUM_QUERIES) / ts(results)) * 3600 * scale_factor
     return throughput_size
 
 
@@ -730,20 +737,32 @@ def get_qphh_size(power_size, throughput_size):
     return qphh_size
 
 
-def metrics(scale, num_streams):
+def calc_metrics(run_timestamp, scale_factor, num_streams):
     results = load_results()
-    power_size = get_power_size(results, scale, num_streams)
+    r = Result("Metric")
+    #
+    power_size = get_power_size(results, scale_factor)
+    r.setMetric("power_size", power_size)
     print("Power@Size = %s" % power_size)
-    throughput_size = get_throughput_size(results, scale, num_streams)
+    #
+    throughput_size = get_throughput_size(results, scale_factor, num_streams)
+    r.setMetric("throughput_size", throughput_size)
     print("Throughput@Size = %s" % throughput_size)
+    #
     qphh_size = get_qphh_size(power_size, throughput_size)
+    r.setMetric("qphh_size", qphh_size)
     print("QphH@Size = %s" % qphh_size)
+    #
+    r.printMetrics("Metrics")
+    r.saveMetrics(run_timestamp, "metrics")
+
 
 
 def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
          scale, num_streams, verbose, read_only):
     if num_streams == 0:
         num_streams = scale_to_num_streams(scale)
+    run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     if phase == "prepare":
         ## try to build dbgen from source and quit if failed
         if build_dbgen(dbgen_dir):
@@ -760,7 +779,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
             exit(1)
         print("created query files in %s" % query_root)
     elif phase == "load":
-        result = Result("Load Results")
+        result = Result("Load")
         if clean_database(query_root, host, port, database, user, password):
             print("could not clean the database.")
             exit(1)
@@ -784,8 +803,8 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         result.setMetric("index_tables", result.stopTimer())
         print("done creating indexes and foreign keys")
         result.printMetrics()
+        result.saveMetrics(run_timestamp, "load")
     elif phase == "query":
-        run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
         if run_power_test(query_root, data_dir, host, port, database, user, password,
                           run_timestamp, num_streams, verbose, read_only):
             print("running power test failed")
@@ -796,11 +815,12 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
             print("running throughput test failed")
             exit(1)
         print("done performance test")
-        metrics(scale, num_streams)
+        calc_metrics(run_timestamp, scale, num_streams)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description = "PGTPCH")
+    parser = argparse.ArgumentParser(description="PGTPCH")
+
     default_host = "localhost"
     default_port = 5432
     default_username = "postgres"
@@ -833,12 +853,13 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--scale", type=float, default=default_scale,
                         help="Size of the data generated, scale factor; default is %s = 1GB" % default_scale)
     parser.add_argument("-n", "--num-streams", type=int, default=default_num_streams,
-                        help="Number of streams to run the throughput test with; default is %s"  % default_num_streams +
+                        help="Number of streams to run the throughput test with; default is %s" % default_num_streams +
                              ", i.e. based on scale factor SF")
     parser.add_argument("-b", "--verbose", action="store_true",
                         help="Print more information to standard output")
     parser.add_argument("-r", "--read-only", action="store_true",
-                        help="Do not execute refresh functions during the query phase, which allows for running it repeatedly")
+                        help="Do not execute refresh functions during the query phase, " +
+                             "which allows for running it repeatedly")
     args = parser.parse_args()
 
     ## Extract all arguments into variables
@@ -858,4 +879,3 @@ if __name__ == "__main__":
 
     ## main
     main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir, scale, num_streams, verbose, read_only)
-
