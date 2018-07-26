@@ -27,7 +27,7 @@ python3 --version
 pip3 install -r requirements.txt
 ```
 
-* some running instance of Postgres
+* some running instance of Postgres, e.g. if running locally, the following command should not fail
 
 ```
 pg_config --version
@@ -47,13 +47,28 @@ GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;
 \q
 PSQL
 ```
+these can be adjusted for your OS easily.
+
+In case you are using a remote PostgreSQL database, make sure your connection is working and 
+you have a valid username and password. 
+
+```
+$ psql -h <host> -p 5432 -d <database> -U <username> -W
+Password for user tpch:
+psql (9.3.23)
+SSL connection (cipher: DHE-RSA-AES256-GCM-SHA384, bits: 256)
+Type "help" for help.
+
+tpchdb=> \q
+```
+Also make sure that you have full rights on the target database (GRANT ALL PRIVILEGES)
 
 ### Usage
 There is a single python file that implements all phases of the benchmark.
 
 ```
-usage: benchmark.py [-h] [-a HOST] [-p PORT] [-u USER] [-v [PASSWORD]]
-                    [-d DATABASE] [-i DATA_DIR] [-q QUERY_ROOT] [-g DBGEN_DIR]
+usage: benchmark.py [-h] [-H HOST] [-p PORT] [-U USERNAME] [-W [PASSWORD]]
+                    [-d DBNAME] [-i DATA_DIR] [-q QUERY_ROOT] [-g DBGEN_DIR]
                     [-s SCALE] [-n NUM_STREAMS] [-b] [-r]
                     {prepare,load,query}
 
@@ -64,15 +79,16 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -a HOST, --host HOST  Address of host on which PostgreSQL instance runs;
+  -H HOST, --host HOST  Address of host on which PostgreSQL instance runs;
                         default is localhost
   -p PORT, --port PORT  Port on which PostgreSQL instance runs; default is
                         5432
-  -u USER, --user USER  User for the PostgreSQL instance; default is postgres
-  -v [PASSWORD], --password [PASSWORD]
+  -U USERNAME, --username USERNAME
+                        User for the PostgreSQL instance; default is postgres
+  -W [PASSWORD], --password [PASSWORD]
                         Password for the PostgreSQL instance; default is
                         test123
-  -d DATABASE, --database DATABASE
+  -d DBNAME, --dbname DBNAME
                         Name of the database; default is tpch
   -i DATA_DIR, --data-dir DATA_DIR
                         Directory for generated data; default is ./data
@@ -82,14 +98,14 @@ optional arguments:
                         Directory containing tpch dbgen source; default is
                         ./tpch-dbgen
   -s SCALE, --scale SCALE
-                        Size of the data generated; default is 1.0 = 1GB
+                        Size of the data generated, scale factor; default is
+                        1.0 = 1GB
   -n NUM_STREAMS, --num-streams NUM_STREAMS
                         Number of streams to run the throughput test with;
                         default is 0, i.e. based on scale factor SF
   -b, --verbose         Print more information to standard output
   -r, --read-only       Do not execute refresh functions during the query
                         phase, which allows for running it repeatedly
-
 ```
 
 ### Phases
