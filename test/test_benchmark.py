@@ -2,7 +2,7 @@
 
 import unittest
 
-import benchmark as bm
+import tpch_pgsql as bm
 import mock
 import os
 

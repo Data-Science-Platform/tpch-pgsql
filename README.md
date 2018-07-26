@@ -1,7 +1,7 @@
 # tpch-pgsql
 [![Build status](https://travis-ci.org/Data-Science-Platform/tpch-pgsql.svg?branch=master)](https://travis-ci.org/Data-Science-Platform/tpch-pgsql)
 
-Implements the [TPCH benchmark](http://www.tpc.org/tpch/) for Postgres
+Implements the [TPC-H benchmark](http://www.tpc.org/tpch/) for Postgres
 
 ### Requirements
 * The benchmark requires TPC-H dbgen:
@@ -67,15 +67,15 @@ Also make sure that you have full rights on the target database (GRANT ALL PRIVI
 There is a single python file that implements all phases of the benchmark.
 
 ```
-usage: benchmark.py [-h] [-H HOST] [-p PORT] [-U USERNAME] [-W [PASSWORD]]
-                    [-d DBNAME] [-i DATA_DIR] [-q QUERY_ROOT] [-g DBGEN_DIR]
-                    [-s SCALE] [-n NUM_STREAMS] [-b] [-r]
-                    {prepare,load,query}
+usage: tpch_pgsql.py [-h] [-H HOST] [-p PORT] [-U USERNAME] [-W [PASSWORD]]
+                     [-d DBNAME] [-i DATA_DIR] [-q QUERY_ROOT] [-g DBGEN_DIR]
+                     [-s SCALE] [-n NUM_STREAMS] [-b] [-r]
+                     {prepare,load,query}
 
-PGTPCH
+tpch_pgsql
 
 positional arguments:
-  {prepare,load,query}  Phase of PGTPCH to run.
+  {prepare,load,query}  Phase of TPC-H benchmark to run.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -129,16 +129,16 @@ Each run consists of two parts:
     * Throughput test: This consists of parallel execution of the query streams and the pairs of refresh functions
 
 ### TPC-H Process
-The complete process for executing TPCH tests is illustrated in the following figure:
-![tpch-process](images/tpch_process.png "TPCH Benchmark Process")
+The complete process for executing TPC-H tests is illustrated in the following figure:
+![tpch-process](images/tpch_process.png "TPC-H Benchmark Process")
 
 ### Database Schema
-![db-schema](images/TPC-H_Datamodel.png "TPCH Database Schema")
+![db-schema](images/TPC-H_Datamodel.png "TPC-H Database Schema")
 
 ### Known Issues
 * Sometimes the data generation phase fails due to file permission issues. In such a scenario delete the data directory and all generated `.tbl` files inside your `tpch-dbgen` directory.
 
 ### References
 
-* For notes on how to the TPCH-Benchmark works see the paper [iceis2012](https://github.com/Data-Science-Platform/tpch-pgsql/blob/master/iceis2012.pdf).
+* For notes on how to the TPC-H benchmark works see the paper [iceis2012](https://github.com/Data-Science-Platform/tpch-pgsql/blob/master/iceis2012.pdf).
 * For the TPC-H benchmark specification see [this document](http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v2.17.3.pdf).

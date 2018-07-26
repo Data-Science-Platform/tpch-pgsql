@@ -32,20 +32,20 @@ before_script:
   - psql --command="GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;" -U postgres
 
 script:
-  - ./benchmark.py || export EXIT_CODE=$? && echo $EXIT_CODE && if [ "$EXIT_CODE" == "2" ]; then true; else false; fi
+  - ./tpch_pgsql.py || export EXIT_CODE=$? && echo $EXIT_CODE && if [ "$EXIT_CODE" == "2" ]; then true; else false; fi
 
-  - ./benchmark.py --help
+  - ./tpch_pgsql.py --help
 
   - export PYTHONPATH=$(pwd)
   - echo $PYTHONPATH
   - $(cd test/ && python -m unittest test_benchmark.py --verbose && cd ..)
 
   - $(cd test/ && python -m unittest test_prepare_before.py --verbose && cd ..)
-  - ./benchmark.py --scale 0.01 prepare
+  - ./tpch_pgsql.py --scale 0.01 prepare
   - $(cd test/ && python -m unittest test_prepare_after.py --verbose && cd ..)
 
-  - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD load
+  - ./tpch_pgsql.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD load
   - $(cd test/ && python -m unittest test_load_after.py --verbose && cd ..)
 
-  - ./benchmark.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD query
+  - ./tpch_pgsql.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD query
   - $(cd test/ && python -m unittest test_query_after.py --verbose && cd ..)

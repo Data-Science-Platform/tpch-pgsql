@@ -729,7 +729,7 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="PGTPCH")
+    parser = argparse.ArgumentParser(description="tpch_pgsql")
 
     default_host = "localhost"
     default_port = 5432
@@ -743,7 +743,7 @@ if __name__ == "__main__":
     default_num_streams = 0
 
     parser.add_argument("phase", choices=["prepare", "load", "query"],
-                        help="Phase of PGTPCH to run.")
+                        help="Phase of TPC-H benchmark to run.")
     parser.add_argument("-H", "--host", default=default_host,
                         help="Address of host on which PostgreSQL instance runs; default is %s" % default_host)
     parser.add_argument("-p", "--port", type=int, default=default_port,
