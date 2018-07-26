@@ -14,7 +14,7 @@ import getpass
 from itertools import zip_longest
 from multiprocessing import Process, Queue
 
-## Constants
+# Constants
 LOAD_DIR = "load"
 UPDATE_DIR = "update"
 DELETE_DIR = "delete"
@@ -72,18 +72,18 @@ QUERY_ORDER = [  # As given in appendix A of the TPCH-specification
         [13, 15, 17, 1, 22, 11, 3, 4, 7, 20, 14, 21, 9, 8, 2, 18, 16, 6, 10, 12, 5, 19]
         ]
 NUM_QUERIES = len(QUERY_ORDER[0]) # 22
-## End Constants
+# End Constants
 
 
-## Class Definitions
+# Class Definitions
 class Result:
     def __init__(self, title = None):
         self.__title__ = "Result"
         if title:
             self.__title__ = title
-        ## Stuff for time tracking
+        # Stuff for time tracking
         self.__start__ = None
-        ## Metrics stored in dict
+        # Metrics stored in dict
         self.__metrics__ = dict()
 
     def startTimer(self):
@@ -191,7 +191,7 @@ class PGDB:
             print("cursor not initialized")
             return 1
 
-##End Class Definitions
+# End Class Definitions
 
 
 def build_dbgen(dbgen_dir):
@@ -229,7 +229,7 @@ def inner_generate_data(data_dir, dbgen_dir, file_pattern, out_ext):
     except IOError as e:
         print("unable to create data directory %s. (%s)" % (data_dir, e))
         return 1
-    ## All files written successfully. Return success code.
+    # All files written successfully. Return success code.
     return 0
 
 
@@ -256,8 +256,8 @@ def generate_data(dbgen_dir, data_dir, scale, num_streams):
     else:
         return p.returncode
 
-    ## Update/Delete phase data
-    ## we generate num_streams + 1 number of updates because 1 is used by the power test
+    # Update/Delete phase data
+    # we generate num_streams + 1 number of updates because 1 is used by the power test
     p = subprocess.Popen([os.path.join(".", "dbgen"), "-vf", "-s", str(scale), "-U", str(num_streams + 1)],
                          cwd = dbgen_dir)
     p.communicate()
@@ -272,7 +272,7 @@ def generate_data(dbgen_dir, data_dir, scale, num_streams):
             print("unable to generate data for the delete phase")
             return 1
         print("generated data for the delete phase")
-        ## All files written successfully. Return success code.
+        # All files written successfully. Return success code.
         return 0
     else:
         return p.returncode
@@ -764,12 +764,12 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         num_streams = scale_to_num_streams(scale)
     run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     if phase == "prepare":
-        ## try to build dbgen from source and quit if failed
+        # try to build dbgen from source and quit if failed
         if build_dbgen(dbgen_dir):
             print("could not build the dbgen/querygen. Check logs.")
             exit(1)
         print("built dbgen from source")
-        ## try to generate data files
+        # try to generate data files
         if generate_data(dbgen_dir, data_dir, scale, num_streams):
             print("could not generate data files.")
             exit(1)
@@ -862,7 +862,7 @@ if __name__ == "__main__":
                              "which allows for running it repeatedly")
     args = parser.parse_args()
 
-    ## Extract all arguments into variables
+    # Extract all arguments into variables
     phase = args.phase
     host = args.host
     port = args.port
@@ -877,5 +877,5 @@ if __name__ == "__main__":
     verbose = args.verbose
     read_only = args.read_only
 
-    ## main
+    # main
     main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir, scale, num_streams, verbose, read_only)
