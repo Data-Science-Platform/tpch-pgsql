@@ -77,6 +77,7 @@ NUM_QUERIES = len(QUERY_ORDER[0]) # 22
 
 # Class Definitions
 class Result:
+    # TODO: add comment
     def __init__(self, title = None):
         self.__title__ = "Result"
         if title:
@@ -134,6 +135,7 @@ class Result:
 
 
 class Password(argparse.Action):
+    # TODO: add comment
     def __call__(self, parser, namespace, values, option_string):
         if values is None:
             values = getpass.getpass()
@@ -141,6 +143,7 @@ class Password(argparse.Action):
 
 
 class PGDB:
+    # TODO: add comment
     __connection__ = None
     __cursor__ = None
     
@@ -212,6 +215,7 @@ def build_dbgen(dbgen_dir):
 
 
 def inner_generate_data(data_dir, dbgen_dir, file_pattern, out_ext):
+    # TODO: add comment
     try:
         os.makedirs(data_dir, exist_ok=True)
         for in_fname in glob.glob(os.path.join(dbgen_dir, file_pattern)):
@@ -432,17 +436,20 @@ def index_tables(query_root, data_dir, host, port, db_name, user, password):
 
 
 def grouper(iterable, n, fillvalue=None):
+    # TODO: add comment
     args = [iter(iterable)] * n
     return zip_longest(*args, fillvalue=fillvalue)
 
 
 def insert_lineitem(cols, conn):
+    # TODO: add comment
     li_insert_stmt = """INSERT INTO LINEITEM VALUES (%s, %s, %s, %s, %s, %s, %s, %s, '%s',
                      '%s', '%s', '%s', '%s', '%s', '%s', '%s')""" % cols
     conn.executeQuery(li_insert_stmt)
 
 
 def refresh_func1(conn, data_dir, stream, num_streams, verbose):
+    # TODO: add comment
     try:
         if verbose:
             print("Running refresh function #1 in stream #%s" % stream)
@@ -486,6 +493,7 @@ def refresh_func1(conn, data_dir, stream, num_streams, verbose):
 
 
 def refresh_func2(conn, data_dir, stream, num_streams, verbose):
+    # TODO: add comment
     try:
         if verbose:
             print("Running refresh function #2 in stream #%s" % stream)
@@ -503,6 +511,7 @@ def refresh_func2(conn, data_dir, stream, num_streams, verbose):
 
 
 def run_query_stream(conn, query_root, stream, num_streams, result, verbose):
+    # TODO: add comment
     index = stream % len(QUERY_ORDER)
     order = QUERY_ORDER[index]
     for i in range(0, 22):
@@ -521,6 +530,7 @@ def run_query_stream(conn, query_root, stream, num_streams, result, verbose):
 
 def run_power_test(query_root, data_dir, host, port, db_name, user, password,
                    run_timestamp, num_streams, verbose, read_only):
+    # TODO: add comment
     try:
         print("Power test started ...")
         conn = PGDB(host, port, db_name, user, password)
@@ -553,6 +563,7 @@ def run_power_test(query_root, data_dir, host, port, db_name, user, password,
 
 def run_throughput_inner(query_root, data_dir, host, port, db_name, user, password, 
                          stream, num_streams, q, verbose):
+    # TODO: add comment
     try:
         conn = PGDB(host, port, db_name, user, password)
         result = Result("ThroughputQueryStream%s" % stream)
@@ -567,6 +578,7 @@ def run_throughput_inner(query_root, data_dir, host, port, db_name, user, passwo
 
 def run_throughput_test(query_root, data_dir, host, port, db_name, user, password,
                         run_timestamp, num_streams, verbose, read_only):
+    # TODO: add comment
     try:
         print("Throughput test started ...")
         conn = PGDB(host, port, db_name, user, password)
@@ -620,6 +632,7 @@ def run_throughput_test(query_root, data_dir, host, port, db_name, user, passwor
 
 
 def scale_to_num_streams(scale):
+    # TODO: add comment
     num_streams = 2
     if scale <= 1:
         num_streams = 2
@@ -645,12 +658,14 @@ def scale_to_num_streams(scale):
 
 
 def get_json_files_from(path):
+    # TODO: add comment
     json_files = [pos_json for pos_json in os.listdir(path) if pos_json.endswith('.json')]
     json_files = [os.path.join(path, s) for s in json_files]
     return json_files
 
 
 def get_json_files(path):
+    # TODO: add comment
     json_files = []
     for run_timestamp in os.listdir(os.path.join(path)):
         for mode in [POWER, THROUGHPUT]:
@@ -661,6 +676,7 @@ def get_json_files(path):
 
 
 def load_results():
+    # TODO: add comment
     results = []
     for json_filename in get_json_files(RESULTS_DIR):
         with open(json_filename, 'r') as json_file:
@@ -672,6 +688,7 @@ def load_results():
 
 
 def get_timedelta_in_seconds(time_interval):
+    # TODO: add comment
     (hours, minutes, sf) = time_interval.split(":")
     (seconds, fraction) = sf.split(".")
     secs = int(hours) * 60 * 60 + \
@@ -682,13 +699,16 @@ def get_timedelta_in_seconds(time_interval):
 
 
 def get_average(results, metric_name):
+    # TODO: add comment
     values = [js["value"] for js in results if js["key"] == metric_name]
     seconds = [get_timedelta_in_seconds(value) for value in values]
     avg = sum(seconds) / len(values)
     return avg
 
 
-def qi(results, i, s): # execution time for query Qi within the query stream s
+def qi(results, i, s):
+    # TODO: add comment
+    # execution time for query Qi within the query stream s
     # i is the ordering number of the query ranging from 1 to 22
     # s is 0 for the power function and the position of the query stream for the throughput test
     assert(1 <= i <= 22)
@@ -698,7 +718,9 @@ def qi(results, i, s): # execution time for query Qi within the query stream s
     return ret
 
 
-def ri(results, j, s): # execution time for the refresh function RFi within a refresh stream s
+def ri(results, j, s):
+    # TODO: add comment
+    # execution time for the refresh function RFi within a refresh stream s
     # j is the ordering function of the refresh function ranging from 1 to 2
     # s is 0 for the power function and the position of the pair of refresh functions
     # in the stream for the throughput test
@@ -709,13 +731,16 @@ def ri(results, j, s): # execution time for the refresh function RFi within a re
     return ret
 
 
-def ts(results):  # total time needed to execute the throughput test
+def ts(results):
+    # TODO: add comment
+    # total time needed to execute the throughput test
     metric_name = THROUGHPUT_TOTAL_METRIC
     ret = get_average(results, metric_name)
     return ret
 
 
 def get_power_size(results, scale_factor):
+    # TODO: add comment
     qi_product = 1
     for i in range(1, NUM_QUERIES + 1):
         qi_product *= qi(results, i, 0)
@@ -728,16 +753,19 @@ def get_power_size(results, scale_factor):
 
 
 def get_throughput_size(results, scale_factor, num_streams):
+    # TODO: add comment
     throughput_size = ((num_streams * NUM_QUERIES) / ts(results)) * 3600 * scale_factor
     return throughput_size
 
 
 def get_qphh_size(power_size, throughput_size):
+    # TODO: add comment
     qphh_size = math.sqrt(power_size * throughput_size)
     return qphh_size
 
 
 def calc_metrics(run_timestamp, scale_factor, num_streams):
+    # TODO: add comment
     results = load_results()
     r = Result("Metric")
     #
@@ -760,6 +788,7 @@ def calc_metrics(run_timestamp, scale_factor, num_streams):
 
 def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
          scale, num_streams, verbose, read_only):
+    # TODO: add comment
     if num_streams == 0:
         num_streams = scale_to_num_streams(scale)
     run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
