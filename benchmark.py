@@ -6,13 +6,12 @@ import argparse
 import os
 import time
 import math
-import subprocess
-import re
 from datetime import datetime
-import glob
 import getpass
 from itertools import zip_longest
 from multiprocessing import Process, Queue
+
+import prepare as prep
 
 # Constants
 LOAD_DIR = "load"
@@ -195,123 +194,6 @@ class PGDB:
             return 1
 
 # End Class Definitions
-
-
-def build_dbgen(dbgen_dir):
-    """Compiles the dbgen from source.
-
-    The Makefile must be present in the same directory as this script.
-
-    Args:
-        dbgen_dir (str): Directory in which the source code is placed.
-
-    Return:
-        0 if successful non zero otherwise
-    """
-    cur_dir = os.getcwd()
-    p = subprocess.Popen(["make", "-f", os.path.join(cur_dir, "Makefile")], cwd = dbgen_dir)
-    p.communicate()
-    return p.returncode
-
-
-def inner_generate_data(data_dir, dbgen_dir, file_pattern, out_ext):
-    # TODO: add comment
-    try:
-        os.makedirs(data_dir, exist_ok=True)
-        for in_fname in glob.glob(os.path.join(dbgen_dir, file_pattern)):
-            fname = os.path.basename(in_fname)
-            out_fname = os.path.join(data_dir, fname + out_ext)
-            try:
-                with open(in_fname) as in_file, open(out_fname, "w") as out_file:
-                    for inline in in_file:
-                        outline = re.sub("\|$", "", inline)
-                        out_file.write(outline)
-                os.remove(in_fname)
-            except IOError as e:
-                print("something bad happened while transforming data files. (%s)" % e)
-                return 1
-    except IOError as e:
-        print("unable to create data directory %s. (%s)" % (data_dir, e))
-        return 1
-    # All files written successfully. Return success code.
-    return 0
-
-
-def generate_data(dbgen_dir, data_dir, scale, num_streams):
-    """Generates data for the loading into tables.
-
-    Args:
-        dbgen_dir (str): Directory in which the source code is placed.
-        data_dir (str): the directory where generated data would be placed.
-        scale (float): Amount of data to be generated. 1 = 1GB.
-        num_streams (int): Number of streams on which the throuput test is going to be performed.
-
-    Return:
-        0 if successful non zero otherwise
-    """
-    p = subprocess.Popen([os.path.join(".", "dbgen"), "-vf", "-s", str(scale)], cwd = dbgen_dir)
-    p.communicate()
-    if not p.returncode:
-        load_dir = os.path.join(data_dir, LOAD_DIR)
-        if inner_generate_data(load_dir, dbgen_dir, "*.tbl", ".csv"):
-            print("unable to generate data for load phase")
-            return 1
-        print("generated data for the load phase")
-    else:
-        return p.returncode
-
-    # Update/Delete phase data
-    # we generate num_streams + 1 number of updates because 1 is used by the power test
-    p = subprocess.Popen([os.path.join(".", "dbgen"), "-vf", "-s", str(scale), "-U", str(num_streams + 1)],
-                         cwd = dbgen_dir)
-    p.communicate()
-    if not p.returncode:
-        update_dir = os.path.join(data_dir, UPDATE_DIR)
-        delete_dir = os.path.join(data_dir, DELETE_DIR)
-        if inner_generate_data(update_dir, dbgen_dir, "*.tbl.u*", ".csv"):
-            print("unable to generate data for the update phase")
-            return 1
-        print("generated data for the update phase")
-        if inner_generate_data(delete_dir, dbgen_dir, "delete.*", ".csv"):
-            print("unable to generate data for the delete phase")
-            return 1
-        print("generated data for the delete phase")
-        # All files written successfully. Return success code.
-        return 0
-    else:
-        return p.returncode
-
-
-def generate_queries(dbgen_dir, query_root):
-    """Generates queries for performance tests.
-
-    Args:
-        dbgen_dir (str): Directory in which the source code is placed.
-        query_root (str): Directory in which query templates directory exists.
-                          Also the place where the generated queries are going to be placed.
-
-    Return:
-        0 if successful non zero otherwise
-    """
-    query_root = os.path.abspath(query_root)
-    dss_query = os.path.join(query_root, TEMPLATE_QUERY_DIR)
-    query_env = os.environ.copy()
-    query_env['DSS_QUERY'] = dss_query
-    query_gen_dir = os.path.join(query_root, GENERATED_QUERY_DIR)
-    os.makedirs(query_gen_dir, exist_ok=True)
-    for i in range(1, 23):
-        try:
-            with open(os.path.join(query_gen_dir, str(i) + ".sql"), "w") as out_file:
-                p = subprocess.Popen([os.path.join(".", "qgen"), str(i)],
-                                     cwd=dbgen_dir, env=query_env, stdout=out_file)
-                p.communicate()
-                if p.returncode:
-                    print("Process returned non zero when generating query number %s" % i)
-                    return p.returncode
-        except IOError as e:
-            print("IO Error during query generation %s" % e)
-            return 1
-    return p.returncode
 
 
 def clean_database(query_root, host, port, db_name, user, password):
@@ -785,23 +667,24 @@ def calc_metrics(run_timestamp, scale_factor, num_streams):
     r.saveMetrics(run_timestamp, "metrics")
 
 
-
 def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
          scale, num_streams, verbose, read_only):
     # TODO: add comment
     run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     if phase == "prepare":
         # try to build dbgen from source and quit if failed
-        if build_dbgen(dbgen_dir):
+        if prep.build_dbgen(dbgen_dir):
             print("could not build the dbgen/querygen. Check logs.")
             exit(1)
         print("built dbgen from source")
         # try to generate data files
-        if generate_data(dbgen_dir, data_dir, scale, num_streams):
+        if prep.generate_data(dbgen_dir, data_dir,
+                              LOAD_DIR, UPDATE_DIR, DELETE_DIR,
+                              scale, num_streams):
             print("could not generate data files.")
             exit(1)
         print("created data files in %s" % data_dir)
-        if generate_queries(dbgen_dir, query_root):
+        if prep.generate_queries(dbgen_dir, query_root, TEMPLATE_QUERY_DIR, GENERATED_QUERY_DIR):
             print("could not generate query files")
             exit(1)
         print("created query files in %s" % query_root)
