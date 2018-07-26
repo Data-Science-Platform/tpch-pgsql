@@ -789,8 +789,6 @@ def calc_metrics(run_timestamp, scale_factor, num_streams):
 def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
          scale, num_streams, verbose, read_only):
     # TODO: add comment
-    if num_streams == 0:
-        num_streams = scale_to_num_streams(scale)
     run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     if phase == "prepare":
         # try to build dbgen from source and quit if failed
@@ -905,6 +903,10 @@ if __name__ == "__main__":
     password = args.password
     verbose = args.verbose
     read_only = args.read_only
+
+    # if no num_streams was provided, then calculate default based on scale factor
+    if num_streams == 0:
+        num_streams = scale_to_num_streams(scale)
 
     # main
     main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir, scale, num_streams, verbose, read_only)
