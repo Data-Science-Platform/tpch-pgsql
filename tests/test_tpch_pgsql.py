@@ -2,9 +2,13 @@
 
 import unittest
 
-import tpch_pgsql as bm
-import mock
 import os
+import mock
+
+import tpch_pgsql as bm
+import prepare
+import load
+import query
 
 
 class TestBenchmark(unittest.TestCase):
@@ -20,7 +24,7 @@ class TestBenchmark(unittest.TestCase):
             ]
         for td in testdata:
             for input, expected in td.items():
-                self.assertEqual(bm.get_timedelta_in_seconds(input), expected)
+                self.assertEqual(query.get_timedelta_in_seconds(input), expected)
 
 
     def test_get_qphh_size(self):
@@ -30,7 +34,7 @@ class TestBenchmark(unittest.TestCase):
             {"input": (2, 3),  "expected": 2.449489742783178}
         ]
         for td in testdata:
-            self.assertEqual(bm.get_qphh_size(td["input"][0], td["input"][1]), td["expected"])
+            self.assertEqual(query.get_qphh_size(td["input"][0], td["input"][1]), td["expected"])
 
 
     def test_scale_to_num_streams(self):
@@ -58,12 +62,12 @@ class TestBenchmark(unittest.TestCase):
         json_files = [os.path.join(path, s) for s in json_files]
         return json_files
 
-    @mock.patch('benchmark.os.listdir')
+    @mock.patch('tpch_pgsql.os.listdir')
     def test_get_json_files_from(self, mock_listdir):
         mock_listdir.return_value = ['a.json', 'b.txt', 'C.json']
         root_dir = 'dummy'
         expected = [os.path.join(root_dir, x) for x in ['a.json', 'C.json']]
-        files = bm.get_json_files_from(root_dir)
+        files = query.get_json_files_from(root_dir)
         self.assertEqual(expected, files,
                          "Some json files were not found, others were included, but are not json files!")
 
@@ -79,7 +83,7 @@ class TestBenchmark(unittest.TestCase):
     def mock_path_exists_side_effect(arg):
         return True
 
-    @mock.patch('benchmark.os.listdir')
+    @mock.patch('tpch_pgsql.os.listdir')
     def test_get_json_files(self, mock_listdir):
         mock_listdir.side_effect = [['run1', 'run2', 'run3', 'run4'],
                                     ['power1.json'], ['throughput1a.json', 'throughput1b.json'],
@@ -96,7 +100,7 @@ class TestBenchmark(unittest.TestCase):
                     os.path.join('dummy', 'run1', 'throughput', 'throughput1b.json'),
                     os.path.join('dummy', 'run2', 'power', 'power2.json'),
                     os.path.join('dummy', 'run2', 'throughput', 'throughput2.json')]
-        files = bm.get_json_files(root_dir)
+        files = query.get_json_files(root_dir)
         self.assertEqual(expected, files,
                          "Some json files were not found, others were included, but are not json files!")
 
