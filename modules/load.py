@@ -1,5 +1,5 @@
 import os
-import postgresqldb as pgdb
+from modules import postgresqldb as pgdb
 
 
 def clean_database(query_root, host, port, db_name, user, password, tables):

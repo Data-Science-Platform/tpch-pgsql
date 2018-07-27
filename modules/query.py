@@ -4,9 +4,7 @@ import json
 from itertools import zip_longest
 from multiprocessing import Process, Queue
 
-import postgresqldb as pgdb
-import result as r
-
+from modules import postgresqldb as pgdb, result as r
 
 POWER = "power"
 THROUGHPUT = "throughput"

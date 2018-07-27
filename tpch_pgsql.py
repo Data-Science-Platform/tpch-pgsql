@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
 
-import json
-import psycopg2
 import argparse
 import os
 import time
-import math
-from datetime import datetime
-import getpass
 
-import postgresqldb as pgdb
-import result as r
-import prepare as prep
-import load
-import query
+from modules import postgresqldb as pgdb, load, query, prepare as prep, result as r
 
 # Constants
 LOAD_DIR = "load"
