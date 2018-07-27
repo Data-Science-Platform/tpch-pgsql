@@ -158,11 +158,11 @@ def run_power_test(query_root, data_dir, update_dir, delete_dir, generated_query
                    run_timestamp, num_streams, verbose, read_only):
     # TODO: add comment
     try:
-        print("Power test started ...")
+        print("Power tests started ...")
         conn = pgdb.PGDB(host, port, db_name, user, password)
         result = r.Result("Power")
         result.startTimer()
-        stream = 0 # constant for power test
+        stream = 0 # constant for power tests
         #
         if not read_only:
             if refresh_func1(conn, data_dir, update_dir, stream, num_streams, verbose):
@@ -178,12 +178,12 @@ def run_power_test(query_root, data_dir, update_dir, delete_dir, generated_query
                 return 1
         result.setMetric(REFRESH_METRIC % (stream, 2), result.stopTimer())
         #
-        print("Power test finished.")
+        print("Power tests finished.")
         if verbose:
             result.printMetrics()
         result.saveMetrics(results_dir, run_timestamp, "power")
     except Exception as e:
-        print("unable to run power test. DB connection failed: %s" % e)
+        print("unable to run power tests. DB connection failed: %s" % e)
         return 1
 
 
@@ -208,7 +208,7 @@ def run_throughput_test(query_root, data_dir, update_dir, delete_dir, generated_
                         run_timestamp, num_streams, verbose, read_only):
     # TODO: add comment
     try:
-        print("Throughput test started ...")
+        print("Throughput tests started ...")
         conn = pgdb.PGDB(host, port, db_name, user, password)
         total = r.Result("ThroughputTotal")
         total.startTimer()
@@ -217,7 +217,7 @@ def run_throughput_test(query_root, data_dir, update_dir, delete_dir, generated_
         for i in range(num_streams):
             stream = i + 1
             # queries
-            print("Throughput test in stream #%s started ..." % stream)
+            print("Throughput tests in stream #%s started ..." % stream)
             p = Process(target=run_throughput_inner,
                         args=(query_root, data_dir, generated_query_dir,
                               host, port, db_name, user, password,
@@ -243,7 +243,7 @@ def run_throughput_test(query_root, data_dir, update_dir, delete_dir, generated_
         q.put(result)
         for p in processes:
             p.join()
-        print("Throughput test finished.")
+        print("Throughput tests finished.")
         for i in range(q.qsize()):
             res = q.get(False)
             if verbose:
@@ -256,7 +256,7 @@ def run_throughput_test(query_root, data_dir, update_dir, delete_dir, generated_
         total.saveMetrics(results_dir, run_timestamp, THROUGHPUT)
         #
     except Exception as e:
-        print("unable to execute throughput test: %s" % e)
+        print("unable to execute throughput tests: %s" % e)
         return 1
 
 
@@ -315,7 +315,7 @@ def qi(results, i, s):
     # TODO: add comment
     # execution time for query Qi within the query stream s
     # i is the ordering number of the query ranging from 1 to 22
-    # s is 0 for the power function and the position of the query stream for the throughput test
+    # s is 0 for the power function and the position of the query stream for the throughput tests
     assert(1 <= i <= 22)
     assert(0 <= s)
     metric_name = QUERY_METRIC % (s, i)
@@ -328,7 +328,7 @@ def ri(results, j, s):
     # execution time for the refresh function RFi within a refresh stream s
     # j is the ordering function of the refresh function ranging from 1 to 2
     # s is 0 for the power function and the position of the pair of refresh functions
-    # in the stream for the throughput test
+    # in the stream for the throughput tests
     assert(j == 1 or j == 2)
     assert(0 <= s)
     metric_name = REFRESH_METRIC % (s, j)
@@ -338,7 +338,7 @@ def ri(results, j, s):
 
 def ts(results):
     # TODO: add comment
-    # total time needed to execute the throughput test
+    # total time needed to execute the throughput tests
     metric_name = THROUGHPUT_TOTAL_METRIC
     ret = get_average(results, metric_name)
     return ret

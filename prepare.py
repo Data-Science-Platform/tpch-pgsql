@@ -68,7 +68,7 @@ def generate_data(dbgen_dir, data_dir, load_dir, update_dir, delete_dir, scale, 
         update_dir (str): Subdirectory where scripts with data update operations is to be placed.
         delete_dir (str): Subdirectory where scripts with data delete operations is to be placed.
         scale (float): Amount of data to be generated. 1 = 1GB.
-        num_streams (int): Number of streams on which the throuput test is going to be performed.
+        num_streams (int): Number of streams on which the throuput tests is going to be performed.
 
     Return:
         0 if successful
@@ -86,7 +86,7 @@ def generate_data(dbgen_dir, data_dir, load_dir, update_dir, delete_dir, scale, 
         return p.returncode
 
     # Update/Delete phase data
-    # we generate num_streams + 1 number of updates because 1 is used by the power test
+    # we generate num_streams + 1 number of updates because 1 is used by the power tests
     p = subprocess.Popen([os.path.join(".", "dbgen"), "-vf", "-s", str(scale), "-U", str(num_streams + 1)],
                          cwd=dbgen_dir)
     p.communicate()

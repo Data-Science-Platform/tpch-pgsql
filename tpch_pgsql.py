@@ -104,15 +104,15 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
         if query.run_power_test(query_root, data_dir, UPDATE_DIR, DELETE_DIR, GENERATED_QUERY_DIR, RESULTS_DIR,
                                 host, port, database, user, password,
                                 run_timestamp, num_streams, verbose, read_only):
-            print("running power test failed")
+            print("running power tests failed")
             exit(1)
-        # Throughput test
+        # Throughput tests
         if query.run_throughput_test(query_root, data_dir, UPDATE_DIR, DELETE_DIR, GENERATED_QUERY_DIR, RESULTS_DIR,
                                      host, port, database, user, password,
                                      run_timestamp, num_streams, verbose, read_only):
-            print("running throughput test failed")
+            print("running throughput tests failed")
             exit(1)
-        print("done performance test")
+        print("done performance tests")
         query.calc_metrics(RESULTS_DIR, run_timestamp, scale, num_streams)
 
 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--scale", type=float, default=default_scale,
                         help="Size of the data generated, scale factor; default is %s = 1GB" % default_scale)
     parser.add_argument("-n", "--num-streams", type=int, default=default_num_streams,
-                        help="Number of streams to run the throughput test with; default is %s" % default_num_streams +
+                        help="Number of streams to run the throughput tests with; default is %s" % default_num_streams +
                              ", i.e. based on scale factor SF")
     parser.add_argument("-b", "--verbose", action="store_true",
                         help="Print more information to standard output")

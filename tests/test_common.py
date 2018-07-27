@@ -13,7 +13,7 @@ class TestCommon(object):
     PASSWORD = "hello123"
     NUM_STREAMS = 2  # because we use scale factor 0.01
     QUERY_NR_RANGE = range(1, NUM_STREAMS + 1)
-    ROOT_DIR = ".."  # parent of test/
+    ROOT_DIR = ".."  # parent of tests/
 
     TABLES = ["customer", "lineitem", "nation", "orders",
               "part", "partsupp", "region", "supplier"]

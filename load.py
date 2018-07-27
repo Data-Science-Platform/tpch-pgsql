@@ -36,7 +36,7 @@ def clean_database(query_root, host, port, db_name, user, password, tables):
 
 
 def create_schema(query_root, host, port, db_name, user, password, prep_query_dir):
-    """Creates the schema for the test. Drops the tables if they exist
+    """Creates the schema for the tests. Drops the tables if they exist
 
     Args:
         query_root (str): Directory in which generated queries directory exists

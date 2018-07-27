@@ -38,14 +38,14 @@ script:
 
   - export PYTHONPATH=$(pwd)
   - echo $PYTHONPATH
-  - $(cd test/ && python -m unittest test_benchmark.py --verbose && cd ..)
+  - $(cd tests/ && python -m unittest test_tpch_pgsql.py --verbose && cd ..)
 
-  - $(cd test/ && python -m unittest test_prepare_before.py --verbose && cd ..)
+  - $(cd tests/ && python -m unittest test_prepare_before.py --verbose && cd ..)
   - ./tpch_pgsql.py --scale 0.01 prepare
-  - $(cd test/ && python -m unittest test_prepare_after.py --verbose && cd ..)
+  - $(cd tests/ && python -m unittest test_prepare_after.py --verbose && cd ..)
 
   - ./tpch_pgsql.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD load
-  - $(cd test/ && python -m unittest test_load_after.py --verbose && cd ..)
+  - $(cd tests/ && python -m unittest test_load_after.py --verbose && cd ..)
 
   - ./tpch_pgsql.py --dbname tpchdb --username tpch --password $TPCH_PASSWORD query
-  - $(cd test/ && python -m unittest test_query_after.py --verbose && cd ..)
+  - $(cd tests/ && python -m unittest test_query_after.py --verbose && cd ..)
