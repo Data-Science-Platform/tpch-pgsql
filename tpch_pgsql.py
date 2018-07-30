@@ -79,6 +79,8 @@ def scale_to_num_streams(scale):
 def main(phase, host, port, user, password, database,
          dbgen_dir, data_dir, query_root,
          scale, num_streams, verbose, read_only):
+    # TODO: unify doctsring, some is in reStructuredText, some is Google style
+    # TODO: finish sphinx integration
     """Runs main code for three different phases.
     It expects parsed command line arguments, with default already applied.
 
