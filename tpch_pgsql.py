@@ -4,7 +4,7 @@ import argparse
 import os
 import time
 
-from modules import postgresqldb as pgdb, load, query, prepare as prep, result as r
+from tpch4pgsql import postgresqldb as pgdb, load, query, prepare as prep, result as r
 
 # Constants
 
