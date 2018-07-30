@@ -19,7 +19,14 @@ TABLES = ['LINEITEM', 'PARTSUPP', 'ORDERS', 'CUSTOMER', 'SUPPLIER', 'NATION', 'R
 
 
 def scale_to_num_streams(scale):
-    # TODO: add comment
+    """
+    Converts scale factor to number of streams as defined in
+    https://github.com/slavong/tpch-pgsql/blob/master/iceis2012.pdf
+    on page 6 in section 3.3.4 Throughput Tests in table 2
+
+    :param scale: scale factor, 1.0 = 1GB
+    :return: number of streams
+    """
     num_streams = 2
     if scale <= 1:
         num_streams = 2
@@ -44,9 +51,27 @@ def scale_to_num_streams(scale):
     return num_streams
 
 
-def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
+def main(phase, host, port, user, password, database,
+         dbgen_dir, data_dir, query_root,
          scale, num_streams, verbose, read_only):
-    # TODO: add comment
+    """Runs main code for three different phases.
+    It expects parsed command line arguments, with default already applied.
+
+    :param phase: prepare, load or query
+    :param host: hostname where the Postgres database is running
+    :param port: port number where the Postgres database is listening
+    :param user: username of the Postgres user with full access to the benchmark DB
+    :param password: password for the Postgres user
+    :param database: database name, where the benchmark will be run
+    :param dbgen_dir: directory where dbgen is to be run
+    :param data_dir: subdirectory with data to be loaded
+    :param query_root: subdirectory with SQL statements
+    :param scale: scale factor, 1.0 = 1GB
+    :param num_streams: number of streams
+    :param verbose: True is more verbose output is required
+    :param read_only: True if no update/delete statements are to be executed during throughput test (query phase)
+    :return: no return value, uses exit(1) if something goes wrong
+    """
     run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     if phase == "prepare":
         # try to build dbgen from source and quit if failed
@@ -172,4 +197,4 @@ if __name__ == "__main__":
         num_streams = scale_to_num_streams(scale)
 
     # main
-    main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir, scale, num_streams, verbose, read_only)
+    main(phase, host, port, user, password, database, dbgen_dir, data_dir, query_root, scale, num_streams, verbose, read_only)
