@@ -1,7 +1,7 @@
 # tpch-pgsql
 [![Build status](https://travis-ci.org/Data-Science-Platform/tpch-pgsql.svg?branch=master)](https://travis-ci.org/Data-Science-Platform/tpch-pgsql)
 
-Implements the [TPCH benchmark](http://www.tpc.org/tpch/) for Postgres
+Implements the [TPC-H benchmark](http://www.tpc.org/tpch/) for Postgres
 
 ### Requirements
 * The benchmark requires TPC-H dbgen:
@@ -27,7 +27,7 @@ python3 --version
 pip3 install -r requirements.txt
 ```
 
-* some running instance of Postgres
+* some running instance of Postgres, e.g. if running locally, the following command should not fail
 
 ```
 pg_config --version
@@ -47,32 +47,48 @@ GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;
 \q
 PSQL
 ```
+these can be adjusted for your OS easily.
+
+In case you are using a remote PostgreSQL database, make sure your connection is working and 
+you have a valid username and password. 
+
+```
+$ psql -h <host> -p 5432 -d <database> -U <username> -W
+Password for user tpch:
+psql (9.3.23)
+SSL connection (cipher: DHE-RSA-AES256-GCM-SHA384, bits: 256)
+Type "help" for help.
+
+tpchdb=> \q
+```
+Also make sure that you have full rights on the target database (GRANT ALL PRIVILEGES)
 
 ### Usage
 There is a single python file that implements all phases of the benchmark.
 
 ```
-usage: benchmark.py [-h] [-a HOST] [-p PORT] [-u USER] [-v [PASSWORD]]
-                    [-d DATABASE] [-i DATA_DIR] [-q QUERY_ROOT] [-g DBGEN_DIR]
-                    [-s SCALE] [-n NUM_STREAMS] [-b] [-r]
-                    {prepare,load,query}
+usage: tpch_pgsql.py [-h] [-H HOST] [-p PORT] [-U USERNAME] [-W [PASSWORD]]
+                     [-d DBNAME] [-i DATA_DIR] [-q QUERY_ROOT] [-g DBGEN_DIR]
+                     [-s SCALE] [-n NUM_STREAMS] [-b] [-r]
+                     {prepare,load,query}
 
-PGTPCH
+tpch_pgsql
 
 positional arguments:
-  {prepare,load,query}  Phase of PGTPCH to run.
+  {prepare,load,query}  Phase of TPC-H benchmark to run.
 
 optional arguments:
   -h, --help            show this help message and exit
-  -a HOST, --host HOST  Address of host on which PostgreSQL instance runs;
+  -H HOST, --host HOST  Address of host on which PostgreSQL instance runs;
                         default is localhost
   -p PORT, --port PORT  Port on which PostgreSQL instance runs; default is
                         5432
-  -u USER, --user USER  User for the PostgreSQL instance; default is postgres
-  -v [PASSWORD], --password [PASSWORD]
+  -U USERNAME, --username USERNAME
+                        User for the PostgreSQL instance; default is postgres
+  -W [PASSWORD], --password [PASSWORD]
                         Password for the PostgreSQL instance; default is
                         test123
-  -d DATABASE, --database DATABASE
+  -d DBNAME, --dbname DBNAME
                         Name of the database; default is tpch
   -i DATA_DIR, --data-dir DATA_DIR
                         Directory for generated data; default is ./data
@@ -82,14 +98,14 @@ optional arguments:
                         Directory containing tpch dbgen source; default is
                         ./tpch-dbgen
   -s SCALE, --scale SCALE
-                        Size of the data generated; default is 1.0 = 1GB
+                        Size of the data generated, scale factor; default is
+                        1.0 = 1GB
   -n NUM_STREAMS, --num-streams NUM_STREAMS
                         Number of streams to run the throughput test with;
                         default is 0, i.e. based on scale factor SF
   -b, --verbose         Print more information to standard output
   -r, --read-only       Do not execute refresh functions during the query
                         phase, which allows for running it repeatedly
-
 ```
 
 ### Phases
@@ -113,16 +129,16 @@ Each run consists of two parts:
     * Throughput test: This consists of parallel execution of the query streams and the pairs of refresh functions
 
 ### TPC-H Process
-The complete process for executing TPCH tests is illustrated in the following figure:
-![tpch-process](images/tpch_process.png "TPCH Benchmark Process")
+The complete process for executing TPC-H tests is illustrated in the following figure:
+![tpch-process](images/tpch_process.png "TPC-H Benchmark Process")
 
 ### Database Schema
-![db-schema](images/TPC-H_Datamodel.png "TPCH Database Schema")
+![db-schema](images/TPC-H_Datamodel.png "TPC-H Database Schema")
 
 ### Known Issues
 * Sometimes the data generation phase fails due to file permission issues. In such a scenario delete the data directory and all generated `.tbl` files inside your `tpch-dbgen` directory.
 
 ### References
 
-* For notes on how to the TPCH-Benchmark works see the paper [iceis2012](https://github.com/Data-Science-Platform/tpch-pgsql/blob/master/iceis2012.pdf).
+* For notes on how to the TPC-H benchmark works see the paper [iceis2012](https://github.com/Data-Science-Platform/tpch-pgsql/blob/master/iceis2012.pdf).
 * For the TPC-H benchmark specification see [this document](http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v2.17.3.pdf).
