@@ -3,10 +3,26 @@
 import argparse
 import os
 import time
+import argparse
+import getpass
 
-from modules import postgresqldb as pgdb, load, query, prepare as prep, result as r
+from tpch4pgsql import postgresqldb as pgdb, load, query, prepare as prep, result as r
 
 # Constants
+
+# default values for command line arguments:
+DEFAULT_HOST = "localhost"
+DEFAULT_PORT = 5432
+DEFAULT_USERNAME = "postgres"
+DEFAULT_PASSWORD = "test123"
+DEFAULT_DBNAME = "tpch"
+DEFAULT_DATA_DIR = os.path.join(".", "data")
+DEFAULT_QUERY_ROOT = os.path.join(".", "query_root")
+DEFAULT_DBGEN_DIR = os.path.join(".", "tpch-dbgen")
+DEFAULT_SCALE = 1.0
+DEFAULT_NUM_STREAMS = 0
+
+# other constants
 LOAD_DIR = "load"
 UPDATE_DIR = "update"
 DELETE_DIR = "delete"
@@ -18,8 +34,24 @@ TABLES = ['LINEITEM', 'PARTSUPP', 'ORDERS', 'CUSTOMER', 'SUPPLIER', 'NATION', 'R
 # End Constants
 
 
+class Password(argparse.Action):
+    """Class for handling Passwords in command line arguments
+
+    """
+    def __call__(self, parser, namespace, values, option_string):
+        if values is None:
+            values = getpass.getpass()
+        setattr(namespace, self.dest, values)
+
+
 def scale_to_num_streams(scale):
-    # TODO: add comment
+    """Converts scale factor to number of streams as defined in
+    https://github.com/slavong/tpch-pgsql/blob/master/iceis2012.pdf
+    on page 6 in section 3.3.4 Throughput Tests in table 2
+
+    :param scale: scale factor, 1.0 = 1GB
+    :return: number of streams
+    """
     num_streams = 2
     if scale <= 1:
         num_streams = 2
@@ -44,9 +76,29 @@ def scale_to_num_streams(scale):
     return num_streams
 
 
-def main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir,
+def main(phase, host, port, user, password, database,
+         dbgen_dir, data_dir, query_root,
          scale, num_streams, verbose, read_only):
-    # TODO: add comment
+    # TODO: unify doctsring, some is in reStructuredText, some is Google style
+    # TODO: finish sphinx integration
+    """Runs main code for three different phases.
+    It expects parsed command line arguments, with default already applied.
+
+    :param phase: prepare, load or query
+    :param host: hostname where the Postgres database is running
+    :param port: port number where the Postgres database is listening
+    :param user: username of the Postgres user with full access to the benchmark DB
+    :param password: password for the Postgres user
+    :param database: database name, where the benchmark will be run
+    :param dbgen_dir: directory where dbgen is to be run
+    :param data_dir: subdirectory with data to be loaded
+    :param query_root: subdirectory with SQL statements
+    :param scale: scale factor, 1.0 = 1GB
+    :param num_streams: number of streams
+    :param verbose: True is more verbose output is required
+    :param read_only: True if no update/delete statements are to be executed during throughput test (query phase)
+    :return: no return value, uses exit(1) if something goes wrong
+    """
     run_timestamp = "run_%s" % time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     if phase == "prepare":
         # try to build dbgen from source and quit if failed
@@ -110,40 +162,28 @@ def main(phase, host, port, user, password, database, data_dir, query_root, dbge
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="tpch_pgsql")
 
-    # TODO: move default values to top as constants
-    default_host = "localhost"
-    default_port = 5432
-    default_username = "postgres"
-    default_password = "test123"
-    default_dbname = "tpch"
-    default_data_dir = os.path.join(".", "data")
-    default_query_root = os.path.join(".", "query_root")
-    default_dbgen_dir = os.path.join(".", "tpch-dbgen")
-    default_scale = 1.0
-    default_num_streams = 0
-
     parser.add_argument("phase", choices=["prepare", "load", "query"],
                         help="Phase of TPC-H benchmark to run.")
-    parser.add_argument("-H", "--host", default=default_host,
-                        help="Address of host on which PostgreSQL instance runs; default is %s" % default_host)
-    parser.add_argument("-p", "--port", type=int, default=default_port,
-                        help="Port on which PostgreSQL instance runs; default is %s" % str(default_port))
-    parser.add_argument("-U", "--username", default=default_username,
-                        help="User for the PostgreSQL instance; default is %s" % default_username)
-    parser.add_argument("-W", "--password", nargs='?', default=default_password, action=pgdb.Password,
-                        help="Password for the PostgreSQL instance; default is %s" % default_password)
-    parser.add_argument("-d", "--dbname", default=default_dbname,
-                        help="Name of the database; default is %s" % default_dbname)
-    parser.add_argument("-i", "--data-dir", default=default_data_dir,
-                        help="Directory for generated data; default is %s" % default_data_dir)
-    parser.add_argument("-q", "--query-root", default=default_query_root,
-                        help="Directory for query files; default is %s" % default_query_root)
-    parser.add_argument("-g", "--dbgen-dir", default=default_dbgen_dir,
-                        help="Directory containing tpch dbgen source; default is %s" % default_dbgen_dir)
-    parser.add_argument("-s", "--scale", type=float, default=default_scale,
-                        help="Size of the data generated, scale factor; default is %s = 1GB" % default_scale)
-    parser.add_argument("-n", "--num-streams", type=int, default=default_num_streams,
-                        help="Number of streams to run the throughput tests with; default is %s" % default_num_streams +
+    parser.add_argument("-H", "--host", default=DEFAULT_HOST,
+                        help="Address of host on which PostgreSQL instance runs; default is %s" % DEFAULT_HOST)
+    parser.add_argument("-p", "--port", type=int, default=DEFAULT_PORT,
+                        help="Port on which PostgreSQL instance runs; default is %s" % str(DEFAULT_PORT))
+    parser.add_argument("-U", "--username", default=DEFAULT_USERNAME,
+                        help="User for the PostgreSQL instance; default is %s" % DEFAULT_USERNAME)
+    parser.add_argument("-W", "--password", nargs='?', default=DEFAULT_PASSWORD, action=Password,
+                        help="Password for the PostgreSQL instance; default is %s" % DEFAULT_PASSWORD)
+    parser.add_argument("-d", "--dbname", default=DEFAULT_DBNAME,
+                        help="Name of the database; default is %s" % DEFAULT_DBNAME)
+    parser.add_argument("-i", "--data-dir", default=DEFAULT_DATA_DIR,
+                        help="Directory for generated data; default is %s" % DEFAULT_DATA_DIR)
+    parser.add_argument("-q", "--query-root", default=DEFAULT_QUERY_ROOT,
+                        help="Directory for query files; default is %s" % DEFAULT_QUERY_ROOT)
+    parser.add_argument("-g", "--dbgen-dir", default=DEFAULT_DBGEN_DIR,
+                        help="Directory containing tpch dbgen source; default is %s" % DEFAULT_DBGEN_DIR)
+    parser.add_argument("-s", "--scale", type=float, default=DEFAULT_SCALE,
+                        help="Size of the data generated, scale factor; default is %s = 1GB" % DEFAULT_SCALE)
+    parser.add_argument("-n", "--num-streams", type=int, default=DEFAULT_NUM_STREAMS,
+                        help="Number of streams to run the throughput tests with; default is %s" % DEFAULT_NUM_STREAMS +
                              ", i.e. based on scale factor SF")
     parser.add_argument("-b", "--verbose", action="store_true",
                         help="Print more information to standard output")
@@ -172,4 +212,4 @@ if __name__ == "__main__":
         num_streams = scale_to_num_streams(scale)
 
     # main
-    main(phase, host, port, user, password, database, data_dir, query_root, dbgen_dir, scale, num_streams, verbose, read_only)
+    main(phase, host, port, user, password, database, dbgen_dir, data_dir, query_root, scale, num_streams, verbose, read_only)

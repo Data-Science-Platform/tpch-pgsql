@@ -6,7 +6,7 @@ import os
 import mock
 
 import tpch_pgsql as bm
-from modules import query
+from tpch4pgsql import query
 
 
 class TestBenchmark(unittest.TestCase):

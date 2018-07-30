@@ -4,7 +4,9 @@ import os
 
 
 class Result:
-    # TODO: add comment
+    """Class for storing result for metrics, with start/stop times, used for calculation of benchmark metrics
+
+    """
     def __init__(self, title = None):
         self.__title__ = "Result"
         if title:

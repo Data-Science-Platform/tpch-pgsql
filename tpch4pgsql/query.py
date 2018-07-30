@@ -4,7 +4,7 @@ import json
 from itertools import zip_longest
 from multiprocessing import Process, Queue
 
-from modules import postgresqldb as pgdb, result as r
+from tpch4pgsql import postgresqldb as pgdb, result as r
 
 POWER = "power"
 THROUGHPUT = "throughput"
@@ -59,24 +59,45 @@ NUM_QUERIES = len(QUERY_ORDER[0]) # 22
 
 
 def grouper(iterable, n, fillvalue=None):
-    # TODO: add comment
+    """Fill iterable up to N values by using fillvalue
+
+    :param iterable: iterable
+    :param n: number of values needed
+    :param fillvalue: value to be used to fill missing values
+    :return: list of values filled up to n elements by using fillvalue
+    """
     args = [iter(iterable)] * n
     return zip_longest(*args, fillvalue=fillvalue)
 
 
 def insert_lineitem(cols, conn):
-    # TODO: add comment
+    """Insert a row into table LINEITEM
+
+    :param cols: tuple with values to be inserted,
+    order of the values must be the same as order of the columns in the target table
+    :param conn: open connection to the database
+    :return: 0 if successful, 1 otherwise
+    """
     li_insert_stmt = """INSERT INTO lineitem VALUES (%s, %s, %s, %s, %s, %s, %s, %s, '%s',
                      '%s', '%s', '%s', '%s', '%s', '%s', '%s')""" % cols
     conn.executeQuery(li_insert_stmt)
 
 
 def refresh_func1(conn, data_dir, update_dir, stream, num_streams, verbose):
-    # TODO: add comment
+    """Run refresh function #1 (update)
+
+    :param conn: open connection to the database
+    :param data_dir: subdirectory with data to be loaded
+    :param update_dir: subdirectory with data to be updated
+    :param stream: stream number
+    :param num_streams: total number of streams
+    :param verbose: True if more verbose output is required
+    :return: 0 if successful, 1 otherwise
+    """
     try:
         if verbose:
             print("Running refresh function #1 in stream #%s" % stream)
-        file_nr = stream + 1 # generated files are named 1,2,3,... while streams are indexed 0,1,2,...
+        file_nr = stream + 1  # generated files are named 1,2,3,... while streams are indexed 0,1,2,...
         filepath_o = os.path.join(data_dir, update_dir, "orders.tbl.u" + str(file_nr) + ".csv")
         filepath_l = os.path.join(data_dir, update_dir, "lineitem.tbl.u" + str(file_nr) + ".csv")
         with open(filepath_o) as orders_file, open(filepath_l) as lineitem_file:
@@ -116,7 +137,16 @@ def refresh_func1(conn, data_dir, update_dir, stream, num_streams, verbose):
 
 
 def refresh_func2(conn, data_dir, delete_dir, stream, num_streams, verbose):
-    # TODO: add comment
+    """Run refresh function #2 (delete)
+
+    :param conn: open connection to the database
+    :param data_dir: subdirectory with data to be loaded
+    :param delete_dir: subdirectory with data to be deleted
+    :param stream: stream number
+    :param num_streams: total number of streams
+    :param verbose: True if more verbose output is required
+    :return: 0 if successful, 1 otherwise
+    """
     try:
         if verbose:
             print("Running refresh function #2 in stream #%s" % stream)
@@ -134,7 +164,17 @@ def refresh_func2(conn, data_dir, delete_dir, stream, num_streams, verbose):
 
 
 def run_query_stream(conn, query_root, generated_query_dir, stream, num_streams, result, verbose):
-    # TODO: add comment
+    """
+
+    :param conn: open connection to the database
+    :param query_root: directory where generated SQL statements are stored
+    :param generated_query_dir: subdirectory with generated queries
+    :param stream: stream number
+    :param num_streams: total number of streams
+    :param result: result object for string start and stop times
+    :param verbose: True if more verbose output is required
+    :return: 0 if successful, 1 otherwise
+    """
     index = stream % len(QUERY_ORDER)
     order = QUERY_ORDER[index]
     for i in range(0, 22):
@@ -152,12 +192,31 @@ def run_query_stream(conn, query_root, generated_query_dir, stream, num_streams,
 
 
 def run_power_test(query_root, data_dir, update_dir, delete_dir, generated_query_dir, results_dir,
-                   host, port, db_name, user, password,
+                   host, port, database, user, password,
                    run_timestamp, num_streams, verbose, read_only):
-    # TODO: add comment
+    """
+
+    :param query_root: directory where generated SQL statements are stored
+    :param data_dir: subdirectory with data to be loaded
+    :param update_dir: subdirectory with data to be updated
+    :param delete_dir: subdirectory with data to be deleted
+    :param generated_query_dir: subdirectory with generated queries
+    :param results_dir: path to the results folder
+    :param host: hostname where the Postgres database is running
+    :param port: port number where the Postgres database is listening
+    :param database: database name, where the benchmark will be run
+    :param user: username of the Postgres user with full access to the benchmark DB
+    :param password: password for the Postgres user
+    :param run_timestamp: name of the run folder, format run_YYYYMMDD_HHMMSS
+    :param num_streams: number of streams
+    :param verbose: True if more verbose output is required
+    :param read_only: True if no inserts/updates/deletes are to be run; can be used to run the same test multiple times
+    without (re)loading the data, e.g. while developing
+    :return: 0 if successful, 1 otherwise
+    """
     try:
         print("Power tests started ...")
-        conn = pgdb.PGDB(host, port, db_name, user, password)
+        conn = pgdb.PGDB(host, port, database, user, password)
         result = r.Result("Power")
         result.startTimer()
         stream = 0 # constant for power tests
@@ -183,43 +242,78 @@ def run_power_test(query_root, data_dir, update_dir, delete_dir, generated_query
     except Exception as e:
         print("unable to run power tests. DB connection failed: %s" % e)
         return 1
+    return 0
 
 
 def run_throughput_inner(query_root, data_dir, generated_query_dir,
-                         host, port, db_name, user, password,
-                         stream, num_streams, q, verbose):
-    # TODO: add comment
+                         host, port, database, user, password,
+                         stream, num_streams, queue, verbose):
+    """
+
+    :param query_root:
+    :param data_dir: subdirectory with data to be loaded
+    :param generated_query_dir: subdirectory with generated queries
+    :param host: hostname where the Postgres database is running
+    :param port: port number where the Postgres database is listening
+    :param database: database name, where the benchmark will be run
+    :param user: username of the Postgres user with full access to the benchmark DB
+    :param password: password for the Postgres user
+    :param stream: stream number
+    :param num_streams: number of streams
+    :param queue: process queue
+    :param verbose: True if more verbose output is required
+    :return: none, uses exit(1) to abort on errors
+    """
     try:
-        conn = pgdb.PGDB(host, port, db_name, user, password)
+        conn = pgdb.PGDB(host, port, database, user, password)
         result = r.Result("ThroughputQueryStream%s" % stream)
         if run_query_stream(conn, query_root, generated_query_dir, stream, num_streams, result, verbose):
             print("unable to finish query in stream #%s" % stream)
             exit(1)
-        q.put(result)
+        queue.put(result)
     except Exception as e:
         print("unable to connect to DB for query in stream #%s: %s" % (stream, e))
         exit(1)
 
 
 def run_throughput_test(query_root, data_dir, update_dir, delete_dir, generated_query_dir, results_dir,
-                        host, port, db_name, user, password,
+                        host, port, database, user, password,
                         run_timestamp, num_streams, verbose, read_only):
-    # TODO: add comment
+    """
+
+    :param query_root:
+    :param data_dir: subdirectory with data to be loaded
+    :param update_dir: subdirectory with data to be updated
+    :param delete_dir: subdirectory with data to be deleted
+    :param generated_query_dir: subdirectory with generated queries
+    :param results_dir: path to the results folder
+    :param host: hostname where the Postgres database is running
+    :param port: port number where the Postgres database is listening
+    :param database: database name, where the benchmark will be run
+    :param user: username of the Postgres user with full access to the benchmark DB
+    :param password: password for the Postgres user
+    :param run_timestamp: name of the run folder, format run_YYYYMMDD_HHMMSS
+    :param num_streams: number of streams
+    :param verbose: True if more verbose output is required
+    :param read_only: True if no inserts/updates/deletes are to be run; can be used to run the same test multiple times
+    without (re)loading the data, e.g. while developing
+    :return: 0 if successful, 1 otherwise
+    """
     try:
         print("Throughput tests started ...")
-        conn = pgdb.PGDB(host, port, db_name, user, password)
+        conn = pgdb.PGDB(host, port, database, user, password)
         total = r.Result("ThroughputTotal")
         total.startTimer()
         processes = []
-        q = Queue()
+        queue = Queue()
         for i in range(num_streams):
             stream = i + 1
             # queries
             print("Throughput tests in stream #%s started ..." % stream)
             p = Process(target=run_throughput_inner,
                         args=(query_root, data_dir, generated_query_dir,
-                              host, port, db_name, user, password,
-                              stream, num_streams, q, verbose))
+                              host, port, database, user, password,
+                              stream, num_streams, queue, verbose))
             processes.append(p)
             p.start()
         result = r.Result("ThroughputRefreshStream")
@@ -238,12 +332,12 @@ def run_throughput_test(query_root, data_dir, update_dir, delete_dir, generated_
                     return 1
             result.setMetric(REFRESH_METRIC % (stream, 2), result.stopTimer())
             #
-        q.put(result)
+        queue.put(result)
         for p in processes:
             p.join()
         print("Throughput tests finished.")
-        for i in range(q.qsize()):
-            res = q.get(False)
+        for i in range(queue.qsize()):
+            res = queue.get(False)
             if verbose:
                 res.printMetrics()
             res.saveMetrics(results_dir, run_timestamp, THROUGHPUT)
@@ -256,17 +350,33 @@ def run_throughput_test(query_root, data_dir, update_dir, delete_dir, generated_
     except Exception as e:
         print("unable to execute throughput tests: %s" % e)
         return 1
+    return 0
 
 
 def get_json_files_from(path):
-    # TODO: add comment
+    """Get list of all JSON file names in path
+
+    :param path: path to a folder
+    :return: list of all JSON files, identified by file extension .json, not by content
+    """
     json_files = [pos_json for pos_json in os.listdir(path) if pos_json.endswith('.json')]
     json_files = [os.path.join(path, s) for s in json_files]
     return json_files
 
 
 def get_json_files(path):
-    # TODO: add comment
+    """Gather list of all JSON files in path, incl. subfolders
+    It is expected, that the folder structure is as follows
+    - path
+      - run_YYYYMMDD_HHMMSS
+        - power
+          - ... JSON files ...
+        - throughput
+          - ... JSON files ...
+
+    :param path: path to be scanned (only "power" and "throughput" subfolders will be considered on level 2)
+    :return: list of JSON file names from all subfolders with expected folder structure
+    """
     json_files = []
     for run_timestamp in os.listdir(os.path.join(path)):
         for mode in [POWER, THROUGHPUT]:
@@ -277,7 +387,11 @@ def get_json_files(path):
 
 
 def load_results(results_dir):
-    # TODO: add comment
+    """Load all results into a list
+
+    :param results_dir: path to results directory
+    :return: list of dictionary pairs with metric name as key and value as value
+    """
     results = []
     for json_filename in get_json_files(results_dir):
         with open(json_filename, 'r') as json_file:
@@ -289,7 +403,11 @@ def load_results(results_dir):
 
 
 def get_timedelta_in_seconds(time_interval):
-    # TODO: add comment
+    """Convert time delta as string into numeric value in seconds
+
+    :param time_interval: time interval as string in format HH:MM:SS.FFFFFF
+    :return: time interval in seconds
+    """
     if ":" not in time_interval:
         return 0
     (hours, minutes, sf) = time_interval.split(":")
@@ -302,7 +420,12 @@ def get_timedelta_in_seconds(time_interval):
 
 
 def get_average(results, metric_name):
-    # TODO: add comment
+    """Calculate average value for the metric
+
+    :param results: list of results
+    :param metric_name: metric name
+    :return: average value for value from results with specified metric name
+    """
     values = [js["value"] for js in results if js["key"] == metric_name]
     seconds = [get_timedelta_in_seconds(value) for value in values]
     avg = sum(seconds) / len(values)
@@ -310,10 +433,13 @@ def get_average(results, metric_name):
 
 
 def qi(results, i, s):
-    # TODO: add comment
-    # execution time for query Qi within the query stream s
-    # i is the ordering number of the query ranging from 1 to 22
-    # s is 0 for the power function and the position of the query stream for the throughput tests
+    """Calculate execution time for query Qi within the query stream s
+
+    :param results: list of results
+    :param i: the ordering number of the query ranging from 1 to 22
+    :param s: either 0 for the power function or the position of the query stream for the throughput tests
+    :return: execution time for query Qi within the query stream s
+    """
     assert(1 <= i <= 22)
     assert(0 <= s)
     metric_name = QUERY_METRIC % (s, i)
@@ -322,11 +448,14 @@ def qi(results, i, s):
 
 
 def ri(results, j, s):
-    # TODO: add comment
-    # execution time for the refresh function RFi within a refresh stream s
-    # j is the ordering function of the refresh function ranging from 1 to 2
-    # s is 0 for the power function and the position of the pair of refresh functions
-    # in the stream for the throughput tests
+    """Calculate execution time for the refresh function RFi within a refresh stream s
+
+    :param results: list of results
+    :param j: ordering function of the refresh function ranging from 1 to 2
+    :param s: either 0 for the power function
+    or the position of the pair of refresh functions in the stream for the throughput tests
+    :return: execution time for the refresh function RFi within a refresh stream s
+    """
     assert(j == 1 or j == 2)
     assert(0 <= s)
     metric_name = REFRESH_METRIC % (s, j)
@@ -335,15 +464,23 @@ def ri(results, j, s):
 
 
 def ts(results):
-    # TODO: add comment
-    # total time needed to execute the throughput tests
+    """Calculate average total time needed to execute the throughput tests
+
+    :param results: list of results
+    :return: total time needed to execute the throughput tests
+    """
     metric_name = THROUGHPUT_TOTAL_METRIC
     ret = get_average(results, metric_name)
     return ret
 
 
 def get_power_size(results, scale_factor):
-    # TODO: add comment
+    """Calculate the Power@Size
+
+    :param results: list of results
+    :param scale_factor: scale factor
+    :return: Power@Size
+    """
     qi_product = 1
     for i in range(1, NUM_QUERIES + 1):
         qi_product *= qi(results, i, 0)
@@ -356,19 +493,37 @@ def get_power_size(results, scale_factor):
 
 
 def get_throughput_size(results, scale_factor, num_streams):
-    # TODO: add comment
+    """Calculate the Troughput@Size
+
+    :param results: list of results
+    :param scale_factor: scale factor
+    :param num_streams: number of streams
+    :return: Troughput@Size
+    """
     throughput_size = ((num_streams * NUM_QUERIES) / ts(results)) * 3600 * scale_factor
     return throughput_size
 
 
 def get_qphh_size(power_size, throughput_size):
-    # TODO: add comment
+    """Calculate QphH@Size
+
+    :param power_size: Power@Size
+    :param throughput_size: Throughput@Size
+    :return: QphH@Size
+    """
     qphh_size = math.sqrt(power_size * throughput_size)
     return qphh_size
 
 
 def calc_metrics(results_dir, run_timestamp, scale_factor, num_streams):
-    # TODO: add comment
+    """Calculate metrics and save them in an output JSON file
+
+    :param results_dir: path to the results folder
+    :param run_timestamp: name of the run folder, format run_YYYYMMDD_HHMMSS
+    :param scale_factor: scale factor
+    :param num_streams: number of streams
+    :return: none
+    """
     results = load_results(results_dir)
     res = r.Result("Metric")
     #
