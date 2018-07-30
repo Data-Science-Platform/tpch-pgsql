@@ -3,6 +3,8 @@
 import argparse
 import os
 import time
+import argparse
+import getpass
 
 from tpch4pgsql import postgresqldb as pgdb, load, query, prepare as prep, result as r
 
@@ -32,9 +34,18 @@ TABLES = ['LINEITEM', 'PARTSUPP', 'ORDERS', 'CUSTOMER', 'SUPPLIER', 'NATION', 'R
 # End Constants
 
 
-def scale_to_num_streams(scale):
+class Password(argparse.Action):
+    """Class for handling Passwords in command line arguments
+
     """
-    Converts scale factor to number of streams as defined in
+    def __call__(self, parser, namespace, values, option_string):
+        if values is None:
+            values = getpass.getpass()
+        setattr(namespace, self.dest, values)
+
+
+def scale_to_num_streams(scale):
+    """Converts scale factor to number of streams as defined in
     https://github.com/slavong/tpch-pgsql/blob/master/iceis2012.pdf
     on page 6 in section 3.3.4 Throughput Tests in table 2
 
@@ -157,7 +168,7 @@ if __name__ == "__main__":
                         help="Port on which PostgreSQL instance runs; default is %s" % str(DEFAULT_PORT))
     parser.add_argument("-U", "--username", default=DEFAULT_USERNAME,
                         help="User for the PostgreSQL instance; default is %s" % DEFAULT_USERNAME)
-    parser.add_argument("-W", "--password", nargs='?', default=DEFAULT_PASSWORD, action=pgdb.Password,
+    parser.add_argument("-W", "--password", nargs='?', default=DEFAULT_PASSWORD, action=Password,
                         help="Password for the PostgreSQL instance; default is %s" % DEFAULT_PASSWORD)
     parser.add_argument("-d", "--dbname", default=DEFAULT_DBNAME,
                         help="Name of the database; default is %s" % DEFAULT_DBNAME)

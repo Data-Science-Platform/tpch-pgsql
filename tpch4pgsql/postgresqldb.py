@@ -1,13 +1,4 @@
-import argparse
 import psycopg2
-
-
-class Password(argparse.Action):
-    # TODO: add comment
-    def __call__(self, parser, namespace, values, option_string):
-        if values is None:
-            values = getpass.getpass()
-        setattr(namespace, self.dest, values)
 
 
 class PGDB:
