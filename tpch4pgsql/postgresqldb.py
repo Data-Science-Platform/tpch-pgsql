@@ -2,7 +2,8 @@ import psycopg2
 
 
 class PGDB:
-    # TODO: add comment
+    """Class for connections to PostgreSQL database
+    """
     __connection__ = None
     __cursor__ = None
 
