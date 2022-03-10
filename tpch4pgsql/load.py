@@ -87,7 +87,7 @@ def load_tables(data_dir, host, port, db_name, user, password, tables, load_dir)
         try:
             for table in tables:
                 filepath = os.path.join(data_dir, load_dir, table.lower() + ".tbl.csv")
-                conn.copyFrom(filepath, separator="|", table=table)
+                conn.copyFrom(filepath, separator="|", table=table.lower())
             conn.commit()
         except Exception as e:
             print("unable to run load tables. %s" %e)
