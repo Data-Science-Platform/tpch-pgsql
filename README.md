@@ -1,14 +1,9 @@
 # tpch-pgsql
-[![Build status](https://travis-ci.org/Data-Science-Platform/tpch-pgsql.svg?branch=master)](https://travis-ci.org/Data-Science-Platform/tpch-pgsql)
 
 Implements the [TPC-H benchmark](http://www.tpc.org/tpch/) for Postgres
 
 ### Requirements
-* The benchmark requires TPC-H dbgen:
-```
-wget -q https://github.com/electrum/tpch-dbgen/archive/32f1c1b92d1664dba542e927d23d86ffa57aa253.zip -O tpch-dbgen.zip
-unzip -q tpch-dbgen.zip && mv tpch-dbgen-32f1c1b92d1664dba542e927d23d86ffa57aa253 tpch-dbgen && rm tpch-dbgen.zip
-```
+
 * gcc
 
 ```
@@ -24,7 +19,7 @@ python3 --version
 * python requirements
 
 ```
-pip3 install -r requirements.txt
+pip3 install psycopg2-binary mock
 ```
 
 * some running instance of Postgres, e.g. if running locally, the following command should not fail
@@ -37,15 +32,8 @@ pg_config --version
 ```
 sudo apt-get install -y postgresql postgresql-contrib
 
-sudo -u postgres createuser tpch
-sudo -u postgres createdb tpchdb
+createdb tpch
 
-sudo -u postgres psql  << PSQL
-ALTER USER tpch WITH ENCRYPTED PASSWORD '********';
-GRANT ALL PRIVILEGES ON DATABASE tpchdb TO tpch;
-\l
-\q
-PSQL
 ```
 these can be adjusted for your OS easily.
 
@@ -54,12 +42,6 @@ you have a valid username and password.
 
 ```
 $ psql -h <host> -p 5432 -d <database> -U <username> -W
-Password for user tpch:
-psql (9.3.23)
-SSL connection (cipher: DHE-RSA-AES256-GCM-SHA384, bits: 256)
-Type "help" for help.
-
-tpchdb=> \q
 ```
 Also make sure that you have full rights on the target database (GRANT ALL PRIVILEGES)
 
@@ -106,6 +88,14 @@ optional arguments:
   -b, --verbose         Print more information to standard output
   -r, --read-only       Do not execute refresh functions during the query
                         phase, which allows for running it repeatedly
+```
+
+
+### example
+```
+./tpch_pgsql.py -H localhost -d tpch -U postgres -W xxxxx -s 1 -r prepare
+./tpch_pgsql.py -H localhost -d tpch -U postgres -W xxxxx -s 1 -r load
+./tpch_pgsql.py -H localhost -d tpch -U postgres -W xxxxx -s 1 -r query
 ```
 
 ### Phases
